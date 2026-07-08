@@ -1,6 +1,6 @@
 # ALB Employee Portal — Arquitectura definitiva (v1.1, sin código)
 
-> Estado: **arquitectura general y enfoque modular aprobados por Ivanhoe (2026-07-08). Esta versión añade los 10 requisitos permanentes y los diagramas completos — pendiente de aprobación final antes del primer archivo PHP.**
+> Estado: **arquitectura y diagramas aprobados por Ivanhoe (2026-07-08). Primer entregable de código publicado en [`alb-employee-portal/`](alb-employee-portal/): núcleo completo + esqueleto del módulo Services, pendiente de revisión. Las escrituras hacia Amelia siguen deshabilitadas hasta cerrar la sección 7.**
 > Última actualización: 2026-07-08
 
 ---
@@ -325,6 +325,8 @@ Requiere la laptop de Ivanhoe con la extensión de Chrome conectada a wp-admin:
 
 ## 8. Qué sigue
 
-1. **Aprobación de Ivanhoe de los diagramas de la sección 2** (requisito 10 — condición para el primer archivo PHP).
-2. Sesión con wp-admin para cerrar los 4 puntos de la sección 7.
-3. Primer entregable de código: núcleo (6.1) + esqueleto del módulo Services, para revisión antes de la lógica de negocio.
+1. ~~Aprobación de los diagramas~~ ✅ Aprobados (2026-07-08).
+2. ~~Primer entregable de código~~ ✅ Publicado en [`alb-employee-portal/`](alb-employee-portal/): núcleo (Identity, REST Kernel, Event Bus, Module Registry con migraciones, Audit, i18n), Gateway con adaptador Amelia (lecturas por SQL introspectivo; escrituras devuelven 501 hasta cerrar la sección 7) y módulo Services (meta por servicio+empleado, cola de propuestas). Verificado con lint PHP 8.4 y prueba de humo con stubs de WordPress (armado del núcleo, 13 rutas, 5 migraciones, degradación limpia sin Amelia).
+3. **Revisión de Ivanhoe del esqueleto.**
+4. Sesión con wp-admin para cerrar los 4 puntos de la sección 7 (habilita las escrituras del Gateway: pricing y creación de clientes).
+5. Después: módulos Customers/Agenda/Stats + interfaz de usuario del panel (assets, mismo estilo visual que alb-catalog).
