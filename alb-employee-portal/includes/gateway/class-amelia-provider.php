@@ -141,13 +141,32 @@ class Amelia_Provider implements Booking_Provider {
 			return $this->unavailable();
 		}
 
+		$bookings = $this->table( 'customer_bookings' );
+		$users    = $this->table( 'users' );
+
+		/*
+		 * El detalle de cliente y precio por cita depende de dos tablas más
+		 * de Amelia; si esta versión no las expone como se espera, la
+		 * agenda funciona igual sin esos campos.
+		 */
+		$customer_fields = "NULL AS customer_ref, NULL AS customer_name, NULL AS price";
+		$customer_join   = '';
+		if ( $bookings && $users ) {
+			$customer_fields = "cb.customerId AS customer_ref,
+						TRIM(CONCAT(COALESCE(u.firstName,''), ' ', COALESCE(u.lastName,''))) AS customer_name,
+						cb.price AS price";
+			$customer_join   = "LEFT JOIN {$bookings} cb ON cb.appointmentId = a.id
+						LEFT JOIN {$users} u ON u.id = cb.customerId";
+		}
+
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT id, serviceId AS service_ref, bookingStart AS starts_at,
-						bookingEnd AS ends_at, status
-				 FROM {$appointments}
-				 WHERE providerId = %d AND bookingStart >= %s AND bookingStart < %s
-				 ORDER BY bookingStart ASC",
+				"SELECT a.id, a.serviceId AS service_ref, a.bookingStart AS starts_at,
+						a.bookingEnd AS ends_at, a.status, {$customer_fields}
+				 FROM {$appointments} a
+				 {$customer_join}
+				 WHERE a.providerId = %d AND a.bookingStart >= %s AND a.bookingStart < %s
+				 ORDER BY a.bookingStart ASC",
 				(int) $employee_ref,
 				$from . ' 00:00:00',
 				$to . ' 23:59:59'
@@ -160,8 +179,49 @@ class Amelia_Provider implements Booking_Provider {
 		}
 
 		foreach ( $rows as &$row ) {
-			$row['id']          = (string) $row['id'];
-			$row['service_ref'] = (string) $row['service_ref'];
+			$row['id']           = (string) $row['id'];
+			$row['service_ref']  = (string) $row['service_ref'];
+			$row['customer_ref'] = null === $row['customer_ref'] ? null : (string) $row['customer_ref'];
+			$row['price']        = null === $row['price'] ? null : (float) $row['price'];
+		}
+		return $rows;
+	}
+
+	public function get_customers_for_employee( $employee_ref ) {
+		global $wpdb;
+
+		$appointments = $this->table( 'appointments' );
+		$bookings     = $this->table( 'customer_bookings' );
+		$users        = $this->table( 'users' );
+
+		if ( ! $appointments || ! $bookings || ! $users ) {
+			return $this->unavailable();
+		}
+
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT u.id, u.firstName AS first_name, u.lastName AS last_name,
+						u.email, u.phone,
+						COUNT(cb.id) AS bookings_count,
+						MAX(a.bookingStart) AS last_booking_at
+				 FROM {$bookings} cb
+				 INNER JOIN {$appointments} a ON a.id = cb.appointmentId
+				 INNER JOIN {$users} u ON u.id = cb.customerId
+				 WHERE a.providerId = %d
+				 GROUP BY u.id, u.firstName, u.lastName, u.email, u.phone
+				 ORDER BY last_booking_at DESC",
+				(int) $employee_ref
+			),
+			ARRAY_A
+		);
+
+		if ( null === $rows ) {
+			return $this->unavailable();
+		}
+
+		foreach ( $rows as &$row ) {
+			$row['id']             = (string) $row['id'];
+			$row['bookings_count'] = (int) $row['bookings_count'];
 		}
 		return $rows;
 	}
@@ -192,7 +252,7 @@ class Amelia_Provider implements Booking_Provider {
 	// ---------------------------------------------------------------
 
 	public function diagnostics() {
-		$tables = array( 'services', 'categories', 'users', 'providers_to_services', 'appointments' );
+		$tables = array( 'services', 'categories', 'users', 'providers_to_services', 'appointments', 'customer_bookings' );
 		$found  = array();
 		foreach ( $tables as $key ) {
 			$found[ $key ] = (bool) $this->table( $key );
@@ -231,9 +291,10 @@ class Amelia_Provider implements Booking_Provider {
 		$expected = array(
 			'services'              => array( 'id', 'name', 'price', 'categoryId' ),
 			'categories'            => array( 'id', 'name' ),
-			'users'                 => array( 'id', 'type', 'firstName' ),
+			'users'                 => array( 'id', 'type', 'firstName', 'lastName', 'email', 'phone' ),
 			'providers_to_services' => array( 'userId', 'serviceId' ),
 			'appointments'          => array( 'id', 'serviceId', 'providerId', 'bookingStart' ),
+			'customer_bookings'     => array( 'id', 'appointmentId', 'customerId', 'price' ),
 		);
 
 		$name = $wpdb->prefix . 'amelia_' . $key;

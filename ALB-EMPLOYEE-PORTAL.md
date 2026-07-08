@@ -327,6 +327,7 @@ Requiere la laptop de Ivanhoe con la extensión de Chrome conectada a wp-admin:
 
 1. ~~Aprobación de los diagramas~~ ✅ Aprobados (2026-07-08).
 2. ~~Primer entregable de código~~ ✅ Publicado en [`alb-employee-portal/`](alb-employee-portal/): núcleo (Identity, REST Kernel, Event Bus, Module Registry con migraciones, Audit, i18n), Gateway con adaptador Amelia (lecturas por SQL introspectivo; escrituras devuelven 501 hasta cerrar la sección 7) y módulo Services (meta por servicio+empleado, cola de propuestas). Verificado con lint PHP 8.4 y prueba de humo con stubs de WordPress (armado del núcleo, 13 rutas, 5 migraciones, degradación limpia sin Amelia).
-3. **Revisión de Ivanhoe del esqueleto.**
-4. Sesión con wp-admin para cerrar los 4 puntos de la sección 7 (habilita las escrituras del Gateway: pricing y creación de clientes).
-5. Después: módulos Customers/Agenda/Stats + interfaz de usuario del panel (assets, mismo estilo visual que alb-catalog).
+3. ~~Módulos Customers/Agenda/Stats~~ ✅ Publicados: Customers (clientes del empleado agregados desde sus reservas, con búsqueda; alta vía Gateway pendiente de escrituras), Agenda (citas por rango con cliente y precio cuando el proveedor los expone) y Stats (resumen mensual: citas por estado, ingresos estimados, top servicios, clientes recurrentes). Ninguno usa tablas propias — todo se lee del proveedor vía Gateway, cumpliendo la regla de no duplicar datos.
+4. **Revisión de Ivanhoe del código v1 (4 módulos + núcleo).**
+5. Sesión con wp-admin para cerrar los 4 puntos de la sección 7 (habilita las escrituras del Gateway: pricing y creación de clientes).
+6. Interfaz de usuario del panel (assets, mismo estilo visual que alb-catalog) + shortcode.

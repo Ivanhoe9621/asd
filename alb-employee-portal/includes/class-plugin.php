@@ -55,6 +55,9 @@ final class Plugin {
 		$this->modules = new Core\Module_Registry();
 
 		$this->modules->register( new Modules\Services\Services_Module( $this->gateway, $this->identity, $this->audit, $this->bus ) );
+		$this->modules->register( new Modules\Customers\Customers_Module( $this->gateway, $this->audit, $this->bus ) );
+		$this->modules->register( new Modules\Agenda\Agenda_Module( $this->gateway ) );
+		$this->modules->register( new Modules\Stats\Stats_Module( $this->gateway ) );
 
 		$this->modules->migrate();
 

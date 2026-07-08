@@ -77,9 +77,22 @@ interface Booking_Provider {
 	 * @param string $employee_ref
 	 * @param string $from Fecha ISO (Y-m-d).
 	 * @param string $to   Fecha ISO (Y-m-d).
-	 * @return array[]|\WP_Error id, service_ref, customer_ref, starts_at, ends_at, status, price.
+	 * @return array[]|\WP_Error id, service_ref, starts_at, ends_at, status y,
+	 *                           si el proveedor lo expone, customer_ref,
+	 *                           customer_name y price por cita.
 	 */
 	public function get_appointments( $employee_ref, $from, $to );
+
+	/**
+	 * Clientes de un empleado: los que reservaron con él (y, cuando el
+	 * proveedor lo permita distinguir, los creados por él). Nunca devuelve
+	 * clientes de otros empleados.
+	 *
+	 * @param string $employee_ref
+	 * @return array[]|\WP_Error id, first_name, last_name, email, phone,
+	 *                           bookings_count, last_booking_at.
+	 */
+	public function get_customers_for_employee( $employee_ref );
 
 	/**
 	 * Diagnóstico del adaptador para el endpoint /status de admin: qué
