@@ -62,6 +62,7 @@ final class Plugin {
 		$this->modules->migrate();
 
 		new Core\Admin_Rest( $this->rest, $this->identity, $this->audit, $this->gateway );
+		new Portal_UI();
 
 		foreach ( $this->modules->active() as $module ) {
 			$module->boot( $this->bus );

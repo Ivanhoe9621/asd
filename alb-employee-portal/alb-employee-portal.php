@@ -32,6 +32,7 @@ require_once ALB_EP_DIR . 'includes/modules/services/class-services-module.php';
 require_once ALB_EP_DIR . 'includes/modules/customers/class-customers-module.php';
 require_once ALB_EP_DIR . 'includes/modules/agenda/class-agenda-module.php';
 require_once ALB_EP_DIR . 'includes/modules/stats/class-stats-module.php';
+require_once ALB_EP_DIR . 'includes/class-portal-ui.php';
 require_once ALB_EP_DIR . 'includes/class-plugin.php';
 
 register_activation_hook( __FILE__, array( 'ALB_EP\\Plugin', 'activate' ) );

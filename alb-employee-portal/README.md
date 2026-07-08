@@ -10,7 +10,8 @@ Núcleo + módulo Services de la plataforma de empleados de AL Bookings. La arqu
 - **Módulo Customers**: lista de clientes del empleado (solo los que reservaron con él, agregados con conteo de reservas y última visita) con búsqueda; alta de clientes vía Gateway (501 hasta habilitar escrituras). Sin tablas propias.
 - **Módulo Agenda**: citas propias por rango de fechas (máx. 1 año) con filtro por estado, incluyendo cliente y precio por cita cuando el proveedor los expone. Solo lectura, sin tablas propias.
 - **Módulo Stats**: resumen mensual del propio empleado — citas por estado, ingresos estimados (con indicador `revenue_complete` si algún precio no pudo leerse), top 5 servicios, clientes únicos y recurrentes. Sin tablas propias.
-- **Pendiente**: interfaz de usuario (assets), verificación en servidor (habilita escrituras).
+- **Interfaz**: shortcode `[alb_employee_portal]` + app vanilla JS (`assets/portal.js`, `assets/portal.css`) con las 5 vistas (servicios con edición de meta, propuestas, clientes con búsqueda y alta, agenda con filtros, estadísticas mensuales), mobile-first, modo oscuro automático, skeletons de carga y toasts. Verificada con Chromium (móvil 390px y escritorio, claro y oscuro, sin errores de consola).
+- **Pendiente**: verificación en servidor (habilita escrituras: pricing y alta de clientes).
 
 ## Estructura
 

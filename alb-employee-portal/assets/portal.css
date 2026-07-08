@@ -1,0 +1,415 @@
+/* ALB Employee Portal — mobile-first, modo oscuro automático, mismas
+   convenciones visuales que alb-catalog (paleta neutra + acento). */
+
+.alb-ep {
+	--ep-bg: #f7f7f8;
+	--ep-surface: #ffffff;
+	--ep-surface-2: #f0f0f2;
+	--ep-text: #17171c;
+	--ep-text-soft: #6b6b76;
+	--ep-border: #e4e4e9;
+	--ep-accent: #17171c;
+	--ep-accent-text: #ffffff;
+	--ep-ok: #1a7f4b;
+	--ep-warn: #b45309;
+	--ep-bad: #b3261e;
+	--ep-radius: 14px;
+	--ep-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 6px 24px rgba(0, 0, 0, 0.06);
+
+	max-width: 960px;
+	margin: 0 auto;
+	padding: clamp(16px, 3vw, 32px);
+	color: var(--ep-text);
+	font-size: 15px;
+	line-height: 1.55;
+}
+
+@media (prefers-color-scheme: dark) {
+	.alb-ep {
+		--ep-bg: #101014;
+		--ep-surface: #1a1a20;
+		--ep-surface-2: #22222a;
+		--ep-text: #f2f2f5;
+		--ep-text-soft: #9a9aa6;
+		--ep-border: #2c2c35;
+		--ep-accent: #f2f2f5;
+		--ep-accent-text: #101014;
+		--ep-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 6px 24px rgba(0, 0, 0, 0.35);
+	}
+}
+
+.alb-ep *,
+.alb-ep *::before,
+.alb-ep *::after {
+	box-sizing: border-box;
+}
+
+/* ---- Cabecera y pestañas ---- */
+
+.alb-ep__hello {
+	margin: 0;
+	color: var(--ep-text-soft);
+	font-size: 13px;
+}
+
+.alb-ep__title {
+	margin: 2px 0 0;
+	font-size: clamp(22px, 4vw, 30px);
+	font-weight: 700;
+	letter-spacing: -0.02em;
+}
+
+.alb-ep__tabs {
+	display: flex;
+	gap: 6px;
+	margin: 20px 0;
+	padding: 4px;
+	background: var(--ep-surface-2);
+	border-radius: calc(var(--ep-radius) - 2px);
+	overflow-x: auto;
+	scrollbar-width: none;
+}
+
+.alb-ep__tabs::-webkit-scrollbar {
+	display: none;
+}
+
+.alb-ep__tab {
+	flex: 1 0 auto;
+	padding: 9px 14px;
+	border: 0;
+	border-radius: calc(var(--ep-radius) - 5px);
+	background: transparent;
+	color: var(--ep-text-soft);
+	font: inherit;
+	font-weight: 600;
+	font-size: 14px;
+	cursor: pointer;
+	white-space: nowrap;
+	transition: background 0.2s ease, color 0.2s ease;
+}
+
+.alb-ep__tab:hover {
+	color: var(--ep-text);
+}
+
+.alb-ep__tab[aria-selected='true'] {
+	background: var(--ep-surface);
+	color: var(--ep-text);
+	box-shadow: var(--ep-shadow);
+}
+
+/* ---- Vista ---- */
+
+.alb-ep__view {
+	animation: alb-ep-fade 0.25s ease;
+}
+
+@keyframes alb-ep-fade {
+	from {
+		opacity: 0;
+		transform: translateY(6px);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+.alb-ep__grid {
+	display: grid;
+	gap: 14px;
+}
+
+@media (min-width: 700px) {
+	.alb-ep__grid--2 {
+		grid-template-columns: 1fr 1fr;
+	}
+	.alb-ep__grid--4 {
+		grid-template-columns: repeat(4, 1fr);
+	}
+}
+
+/* ---- Tarjetas ---- */
+
+.alb-ep-card {
+	background: var(--ep-surface);
+	border: 1px solid var(--ep-border);
+	border-radius: var(--ep-radius);
+	padding: 16px;
+	box-shadow: var(--ep-shadow);
+	transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.alb-ep-card--hover:hover {
+	transform: translateY(-2px);
+}
+
+.alb-ep-card__row {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 10px;
+}
+
+.alb-ep-card__name {
+	margin: 0;
+	font-size: 16px;
+	font-weight: 700;
+}
+
+.alb-ep-card__meta {
+	margin: 4px 0 0;
+	color: var(--ep-text-soft);
+	font-size: 13px;
+}
+
+.alb-ep-card__price {
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+}
+
+.alb-ep-card__desc {
+	margin: 10px 0 0;
+	font-size: 14px;
+	color: var(--ep-text-soft);
+}
+
+/* ---- Badges ---- */
+
+.alb-ep-badge {
+	display: inline-block;
+	padding: 2px 9px;
+	border-radius: 999px;
+	font-size: 12px;
+	font-weight: 600;
+	background: var(--ep-surface-2);
+	color: var(--ep-text-soft);
+}
+
+.alb-ep-badge--ok {
+	background: color-mix(in srgb, var(--ep-ok) 14%, transparent);
+	color: var(--ep-ok);
+}
+
+.alb-ep-badge--warn {
+	background: color-mix(in srgb, var(--ep-warn) 14%, transparent);
+	color: var(--ep-warn);
+}
+
+.alb-ep-badge--bad {
+	background: color-mix(in srgb, var(--ep-bad) 12%, transparent);
+	color: var(--ep-bad);
+}
+
+/* ---- Botones y formularios ---- */
+
+.alb-ep-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 9px 16px;
+	border: 1px solid var(--ep-border);
+	border-radius: 10px;
+	background: var(--ep-surface);
+	color: var(--ep-text);
+	font: inherit;
+	font-weight: 600;
+	font-size: 14px;
+	cursor: pointer;
+	text-decoration: none;
+	transition: transform 0.15s ease, background 0.2s ease, opacity 0.2s ease;
+}
+
+.alb-ep-btn:hover {
+	transform: translateY(-1px);
+}
+
+.alb-ep-btn:active {
+	transform: none;
+}
+
+.alb-ep-btn--primary {
+	background: var(--ep-accent);
+	border-color: var(--ep-accent);
+	color: var(--ep-accent-text);
+}
+
+.alb-ep-btn--ghost {
+	border-color: transparent;
+	background: transparent;
+	color: var(--ep-text-soft);
+}
+
+.alb-ep-btn[disabled] {
+	opacity: 0.5;
+	cursor: not-allowed;
+	transform: none;
+}
+
+.alb-ep-field {
+	display: block;
+	margin: 0 0 12px;
+}
+
+.alb-ep-field span {
+	display: block;
+	margin-bottom: 4px;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--ep-text-soft);
+}
+
+.alb-ep-input,
+.alb-ep textarea,
+.alb-ep select {
+	width: 100%;
+	padding: 10px 12px;
+	border: 1px solid var(--ep-border);
+	border-radius: 10px;
+	background: var(--ep-bg);
+	color: var(--ep-text);
+	font: inherit;
+	font-size: 14px;
+	transition: border-color 0.2s ease;
+}
+
+.alb-ep-input:focus,
+.alb-ep textarea:focus {
+	outline: none;
+	border-color: var(--ep-text-soft);
+}
+
+.alb-ep-switch {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	cursor: pointer;
+	font-size: 14px;
+}
+
+/* ---- Listas (agenda, clientes) ---- */
+
+.alb-ep-list {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	display: grid;
+	gap: 10px;
+}
+
+.alb-ep-list__item {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 12px;
+	padding: 12px 14px;
+	background: var(--ep-surface);
+	border: 1px solid var(--ep-border);
+	border-radius: 12px;
+}
+
+.alb-ep-list__main {
+	min-width: 0;
+}
+
+.alb-ep-list__name {
+	font-weight: 600;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.alb-ep-list__sub {
+	color: var(--ep-text-soft);
+	font-size: 13px;
+}
+
+/* ---- Stats ---- */
+
+.alb-ep-stat {
+	text-align: left;
+}
+
+.alb-ep-stat__value {
+	margin: 0;
+	font-size: clamp(22px, 4vw, 28px);
+	font-weight: 800;
+	letter-spacing: -0.02em;
+	font-variant-numeric: tabular-nums;
+}
+
+.alb-ep-stat__label {
+	margin: 2px 0 0;
+	color: var(--ep-text-soft);
+	font-size: 13px;
+}
+
+/* ---- Estados ---- */
+
+.alb-ep-empty {
+	padding: 40px 16px;
+	text-align: center;
+	color: var(--ep-text-soft);
+}
+
+.alb-ep-skel {
+	border-radius: var(--ep-radius);
+	background: linear-gradient(100deg, var(--ep-surface-2) 40%, var(--ep-surface) 50%, var(--ep-surface-2) 60%);
+	background-size: 200% 100%;
+	animation: alb-ep-shimmer 1.2s infinite linear;
+	min-height: 84px;
+}
+
+@keyframes alb-ep-shimmer {
+	to {
+		background-position: -200% 0;
+	}
+}
+
+.alb-ep__toast {
+	position: fixed;
+	left: 50%;
+	bottom: 24px;
+	transform: translateX(-50%);
+	padding: 10px 18px;
+	border-radius: 999px;
+	background: var(--ep-accent);
+	color: var(--ep-accent-text);
+	font-size: 14px;
+	font-weight: 600;
+	box-shadow: var(--ep-shadow);
+	z-index: 9999;
+	animation: alb-ep-fade 0.25s ease;
+}
+
+.alb-ep__toast--bad {
+	background: var(--ep-bad);
+	color: #fff;
+}
+
+.alb-ep-guest {
+	max-width: 420px;
+	margin: 40px auto;
+	text-align: center;
+}
+
+/* ---- Barra de utilidades (búsqueda / filtros) ---- */
+
+.alb-ep-bar {
+	display: flex;
+	gap: 10px;
+	margin-bottom: 14px;
+	flex-wrap: wrap;
+	align-items: center;
+}
+
+.alb-ep-bar .alb-ep-input {
+	flex: 1;
+	min-width: 180px;
+	width: auto;
+}
+
+.alb-ep-form-card {
+	margin-bottom: 14px;
+}
