@@ -1,7 +1,7 @@
 # ALB Employee Portal — Arquitectura definitiva (v1.1, sin código)
 
-> Estado: **arquitectura y diagramas aprobados por Ivanhoe (2026-07-08). Primer entregable de código publicado en [`alb-employee-portal/`](alb-employee-portal/): núcleo completo + esqueleto del módulo Services, pendiente de revisión. Las escrituras hacia Amelia siguen deshabilitadas hasta cerrar la sección 7.**
-> Última actualización: 2026-07-08
+> Estado: **RELEASE CANDIDATE 1.0.0-rc.1 (decisión de Ivanhoe, 2026-07-10). La v1.0 NO está terminada: las escrituras hacia Amelia (crear clientes, modificar precios) son parte del alcance original y siguen pendientes de la verificación en el entorno real. El plan de cierre y el checklist de pruebas están en [`ALB-EMPLOYEE-PORTAL-TESTS.md`](ALB-EMPLOYEE-PORTAL-TESTS.md).**
+> Última actualización: 2026-07-10
 
 ---
 
@@ -330,6 +330,17 @@ Requiere la laptop de Ivanhoe con la extensión de Chrome conectada a wp-admin:
 3. ~~Módulos Customers/Agenda/Stats~~ ✅ Publicados: Customers (clientes del empleado agregados desde sus reservas, con búsqueda; alta vía Gateway pendiente de escrituras), Agenda (citas por rango con cliente y precio cuando el proveedor los expone) y Stats (resumen mensual: citas por estado, ingresos estimados, top servicios, clientes recurrentes). Ninguno usa tablas propias — todo se lee del proveedor vía Gateway, cumpliendo la regla de no duplicar datos.
 4. ~~Interfaz de usuario~~ ✅ Publicada: shortcode `[alb_employee_portal]`, app sin frameworks con las 5 vistas del empleado, mobile-first, modo oscuro, i18n desde PHP. Verificada renderizando en Chromium con datos simulados (móvil y escritorio, claro y oscuro, cero errores de consola).
 5. ~~Vista admin del portal~~ ✅ Publicada: pestañas Cola (aprobar/rechazar/vincular propuestas con filtros por estado), Equipo (estado del sistema + mapeo usuario↔empleado con selector de empleados del proveedor) y Auditoría (paginada). Verificada en Chromium sin errores de consola.
-6. **Revisión de Ivanhoe del código v1 completo (núcleo + 4 módulos + interfaz empleado y admin).**
-7. Sesión con wp-admin para cerrar los 4 puntos de la sección 7 (habilita las escrituras del Gateway: pricing y creación de clientes).
-8. Despliegue en albookings.com y pruebas con datos reales.
+
+### Plan de cierre de la v1.0 (orden fijado por Ivanhoe, 2026-07-10)
+
+El código actual es **1.0.0-rc.1**. Para llegar a la 1.0 final, en el entorno real y en este orden:
+
+1. Verificar la licencia y la versión instalada de Amelia.
+2. Analizar las clases internas responsables de crear servicios, clientes y actualizar precios.
+3. Implementar las escrituras usando únicamente los mecanismos internos oficiales de Amelia cuando sea posible.
+4. Desplegar el plugin en un entorno de pruebas dentro de albookings.com (página privada, no enlazada).
+5. Pruebas completas con datos reales.
+6. Revisar registros PHP, consola, rendimiento y compatibilidad.
+7. Solo tras superar todas las pruebas, etiquetar 1.0.0 y pasar a producción.
+
+Cada paso tiene sus ítems verificables en **[ALB-EMPLOYEE-PORTAL-TESTS.md](ALB-EMPLOYEE-PORTAL-TESTS.md)** (funcionales, seguridad, regresión, rendimiento y criterios de salida).

@@ -1,4 +1,6 @@
-# ALB Employee Portal (esqueleto v0.1.0)
+# ALB Employee Portal (1.0.0-rc.1 — Release Candidate)
+
+> **RC, no versión final.** Las escrituras hacia Amelia (crear clientes, modificar precios) están pendientes de la verificación en el entorno real y forman parte del alcance de la v1.0. Plan de cierre y checklist de pruebas: [`../ALB-EMPLOYEE-PORTAL-TESTS.md`](../ALB-EMPLOYEE-PORTAL-TESTS.md).
 
 Núcleo + módulo Services de la plataforma de empleados de AL Bookings. La arquitectura, los requisitos permanentes y los diagramas viven en [`../ALB-EMPLOYEE-PORTAL.md`](../ALB-EMPLOYEE-PORTAL.md) — este código los implementa y no debe desviarse de ellos.
 
