@@ -31,6 +31,7 @@ class Admin_Rest {
 			$rest->route( '/admin/employee-map', 'GET', array( $this, 'list_map' ), Rest_Kernel::ACCESS_ADMIN );
 			$rest->route( '/admin/employee-map', 'PUT', array( $this, 'update_map' ), Rest_Kernel::ACCESS_ADMIN );
 			$rest->route( '/admin/employees', 'GET', array( $this, 'list_provider_employees' ), Rest_Kernel::ACCESS_ADMIN );
+			$rest->route( '/admin/wp-users', 'GET', array( $this, 'list_wp_users' ), Rest_Kernel::ACCESS_ADMIN );
 			$rest->route( '/admin/audit', 'GET', array( $this, 'list_audit' ), Rest_Kernel::ACCESS_ADMIN );
 			$rest->route( '/admin/status', 'GET', array( $this, 'status' ), Rest_Kernel::ACCESS_ADMIN );
 		} );
@@ -92,6 +93,28 @@ class Admin_Rest {
 			return $employees;
 		}
 		return array( 'items' => $employees );
+	}
+
+	public function list_wp_users( \WP_REST_Request $request, $employee_ref ) {
+		$search = sanitize_text_field( (string) $request->get_param( 'search' ) );
+
+		$query = new \WP_User_Query( array(
+			'number'         => 20,
+			'search'         => '' !== $search ? '*' . $search . '*' : '',
+			'search_columns' => array( 'user_login', 'user_email', 'display_name' ),
+			'fields'         => array( 'ID', 'display_name', 'user_login' ),
+		) );
+
+		$items = array();
+		foreach ( $query->get_results() as $user ) {
+			$items[] = array(
+				'id'           => (int) $user->ID,
+				'display_name' => $user->display_name,
+				'login'        => $user->user_login,
+			);
+		}
+
+		return array( 'items' => $items );
 	}
 
 	public function list_audit( \WP_REST_Request $request, $employee_ref ) {

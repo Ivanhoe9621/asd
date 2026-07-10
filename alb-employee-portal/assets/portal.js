@@ -105,13 +105,35 @@
 
 	// ---------------- pestañas ----------------
 
-	var VIEWS = [
-		{ key: 'services', label: I18N.services, render: renderServices },
-		{ key: 'requests', label: I18N.requests, render: renderRequests },
-		{ key: 'customers', label: I18N.customers, render: renderCustomers },
-		{ key: 'agenda', label: I18N.agenda, render: renderAgenda },
-		{ key: 'stats', label: I18N.stats, render: renderStats }
-	];
+	var VIEWS = [];
+
+	function buildViews(me) {
+		VIEWS = [];
+
+		// Las vistas de empleado solo tienen sentido con un empleado vinculado.
+		if (me.employee_ref) {
+			VIEWS.push(
+				{ key: 'services', label: I18N.services, render: renderServices },
+				{ key: 'requests', label: I18N.requests, render: renderRequests },
+				{ key: 'customers', label: I18N.customers, render: renderCustomers },
+				{ key: 'agenda', label: I18N.agenda, render: renderAgenda },
+				{ key: 'stats', label: I18N.stats, render: renderStats }
+			);
+		}
+
+		if (me.is_admin) {
+			VIEWS.push(
+				{ key: 'admin_requests', label: I18N.admin_requests, render: renderAdminRequests },
+				{ key: 'admin_team', label: I18N.admin_team, render: renderAdminTeam },
+				{ key: 'admin_audit', label: I18N.admin_audit, render: renderAdminAudit }
+			);
+		}
+
+		if (VIEWS.length && !VIEWS.some(function (view) { return view.key === state.view; })) {
+			state.view = VIEWS[0].key;
+			root.setAttribute('data-view', state.view);
+		}
+	}
 
 	function renderTabs() {
 		el.tabs.innerHTML = VIEWS.map(function (view) {
@@ -375,7 +397,7 @@
 							'<div class="alb-ep-list__sub">' + esc(when) + '</div>' +
 						'</div>' +
 						'<div style="text-align:right">' +
-							'<span class="alb-ep-badge">' + esc(appointment.status) + '</span> ' +
+							'<span class="alb-ep-badge">' + esc(I18N['apt_' + appointment.status] || appointment.status) + '</span> ' +
 							'<span class="alb-ep-card__price">' + money(appointment.price) + '</span>' +
 						'</div>' +
 					'</li>';
@@ -435,13 +457,211 @@
 			'<p class="alb-ep-stat__label">' + esc(label) + '</p></div>';
 	}
 
+	// ---------------- vistas admin ----------------
+
+	function renderAdminRequests(status) {
+		status = status || 'pending';
+		el.view.innerHTML = skeletons(3);
+		api('/admin/service-requests?status=' + encodeURIComponent(status)).then(function (body) {
+			var items = body.items || [];
+
+			var html = '<div class="alb-ep-bar">' +
+				[['pending', I18N.status_pending], ['approved', I18N.status_approved],
+				 ['rejected', I18N.status_rejected], ['linked', I18N.status_linked]].map(function (pair) {
+					return '<button class="alb-ep-btn' + (pair[0] === status ? ' alb-ep-btn--primary' : '') +
+						'" data-req-status="' + pair[0] + '">' + esc(pair[1]) + '</button>';
+				}).join('') + '</div>';
+
+			if (!items.length) {
+				el.view.innerHTML = html + empty();
+			} else {
+				el.view.innerHTML = html + '<div class="alb-ep__grid">' + items.map(function (request) {
+					var actions = '';
+					if (request.status === 'pending') {
+						actions = '<div class="alb-ep-bar" style="margin-top:10px;margin-bottom:0">' +
+							'<button class="alb-ep-btn alb-ep-btn--primary" data-req-approve="' + request.id + '">' + esc(I18N.approve) + '</button>' +
+							'<button class="alb-ep-btn" data-req-reject="' + request.id + '">' + esc(I18N.reject) + '</button>' +
+						'</div>';
+					} else if (request.status === 'approved') {
+						actions = '<p class="alb-ep-card__meta" style="margin-top:10px">' + esc(I18N.link_hint) + '</p>' +
+							'<div class="alb-ep-bar" style="margin-bottom:0">' +
+							'<input class="alb-ep-input" data-link-input="' + request.id + '" placeholder="ID">' +
+							'<button class="alb-ep-btn alb-ep-btn--primary" data-req-link="' + request.id + '">' + esc(I18N.link) + '</button>' +
+						'</div>';
+					}
+					return '<article class="alb-ep-card">' +
+						'<div class="alb-ep-card__row">' +
+							'<h3 class="alb-ep-card__name">' + esc(request.proposed_name) + '</h3>' +
+							'<span class="alb-ep-card__price">' + money(request.proposed_price) + '</span>' +
+						'</div>' +
+						'<p class="alb-ep-card__meta">' + esc(I18N.employee) + ' #' + esc(request.ext_employee_id) +
+							' · ' + esc(String(request.created_at || '').slice(0, 10)) + '</p>' +
+						'<p class="alb-ep-card__desc">' + esc(request.proposed_description || '') + '</p>' +
+						actions +
+					'</article>';
+				}).join('') + '</div>';
+			}
+
+			function refresh() { renderAdminRequests(status); }
+
+			el.view.querySelectorAll('[data-req-status]').forEach(function (button) {
+				button.addEventListener('click', function () {
+					renderAdminRequests(button.getAttribute('data-req-status'));
+				});
+			});
+			el.view.querySelectorAll('[data-req-approve]').forEach(function (button) {
+				button.addEventListener('click', function () {
+					api('/admin/service-requests/' + button.getAttribute('data-req-approve'), {
+						method: 'PUT', body: JSON.stringify({ status: 'approved' })
+					}).then(function () { toast(I18N.saved); refresh(); }).catch(fail);
+				});
+			});
+			el.view.querySelectorAll('[data-req-reject]').forEach(function (button) {
+				button.addEventListener('click', function () {
+					api('/admin/service-requests/' + button.getAttribute('data-req-reject'), {
+						method: 'PUT', body: JSON.stringify({ status: 'rejected' })
+					}).then(function () { toast(I18N.saved); refresh(); }).catch(fail);
+				});
+			});
+			el.view.querySelectorAll('[data-req-link]').forEach(function (button) {
+				button.addEventListener('click', function () {
+					var id = button.getAttribute('data-req-link');
+					var input = el.view.querySelector('[data-link-input="' + id + '"]');
+					api('/admin/service-requests/' + id, {
+						method: 'PUT',
+						body: JSON.stringify({ status: 'linked', ext_service_id: input.value.trim() })
+					}).then(function () { toast(I18N.saved); refresh(); }).catch(fail);
+				});
+			});
+		}).catch(function (error) {
+			el.view.innerHTML = empty();
+			fail(error);
+		});
+	}
+
+	function renderAdminTeam() {
+		el.view.innerHTML = skeletons(3);
+		Promise.all([
+			api('/admin/employee-map'),
+			api('/admin/employees').catch(function () { return { items: [] }; }),
+			api('/admin/status').catch(function () { return null; })
+		]).then(function (results) {
+			var mappings = results[0].items || [];
+			var employees = results[1].items || [];
+			var status = results[2];
+
+			var byRef = {};
+			employees.forEach(function (employee) {
+				byRef[employee.id] = (employee.first_name + ' ' + (employee.last_name || '')).trim();
+			});
+
+			var options = employees.map(function (employee) {
+				return '<option value="' + esc(employee.id) + '">' + esc(byRef[employee.id]) + '</option>';
+			}).join('');
+
+			var html = '';
+			if (status && status.diagnostics) {
+				var diag = status.diagnostics;
+				var tablesOk = Object.keys(diag.tables || {}).filter(function (k) { return diag.tables[k]; }).length;
+				var tablesTotal = Object.keys(diag.tables || {}).length;
+				html += '<div class="alb-ep-card alb-ep-form-card">' +
+					'<h3 class="alb-ep-card__name">' + esc(I18N.system_status) + '</h3>' +
+					'<p class="alb-ep-card__meta">v' + esc(status.version) + ' · ' + esc(diag.provider) +
+						' · tablas ' + tablesOk + '/' + tablesTotal + '</p>' +
+					'<p style="margin:8px 0 0"><span class="alb-ep-badge ' + (diag.writes_enabled ? 'alb-ep-badge--ok' : 'alb-ep-badge--warn') + '">' +
+						esc(diag.writes_enabled ? I18N.writes_on : I18N.writes_off) + '</span></p>' +
+				'</div>';
+			}
+
+			html += '<div class="alb-ep-card alb-ep-form-card">' +
+				'<h3 class="alb-ep-card__name">' + esc(I18N.map_add) + '</h3>' +
+				'<div class="alb-ep-bar" style="margin-top:10px;margin-bottom:0">' +
+					'<input class="alb-ep-input" data-map-user type="number" min="1" placeholder="' + esc(I18N.wp_user) + ' (ID)">' +
+					'<select class="alb-ep-input" data-map-employee>' + options + '</select>' +
+					'<button class="alb-ep-btn alb-ep-btn--primary" data-map-save>' + esc(I18N.save) + '</button>' +
+				'</div></div>';
+
+			if (!mappings.length) {
+				html += empty();
+			} else {
+				html += '<ul class="alb-ep-list">' + mappings.map(function (mapping) {
+					return '<li class="alb-ep-list__item">' +
+						'<div class="alb-ep-list__main">' +
+							'<div class="alb-ep-list__name">' + esc(byRef[mapping.ext_employee_id] || ('#' + mapping.ext_employee_id)) + '</div>' +
+							'<div class="alb-ep-list__sub">' + esc(I18N.wp_user) + ' #' + esc(mapping.wp_user_id) + '</div>' +
+						'</div>' +
+						'<span class="alb-ep-badge">' + esc(mapping.provider) + '</span>' +
+					'</li>';
+				}).join('') + '</ul>';
+			}
+
+			el.view.innerHTML = html;
+			el.view.querySelector('[data-map-save]').addEventListener('click', function () {
+				api('/admin/employee-map', {
+					method: 'PUT',
+					body: JSON.stringify({
+						wp_user_id: el.view.querySelector('[data-map-user]').value,
+						ext_employee_id: el.view.querySelector('[data-map-employee]').value
+					})
+				}).then(function () { toast(I18N.saved); renderAdminTeam(); }).catch(fail);
+			});
+		}).catch(function (error) {
+			el.view.innerHTML = empty();
+			fail(error);
+		});
+	}
+
+	function renderAdminAudit(page) {
+		page = page || 1;
+		if (page === 1) {
+			el.view.innerHTML = skeletons(4);
+		}
+		api('/admin/audit?page=' + page + '&per_page=20').then(function (body) {
+			var items = body.items || [];
+			var listHtml = items.map(function (entry) {
+				return '<li class="alb-ep-list__item">' +
+					'<div class="alb-ep-list__main">' +
+						'<div class="alb-ep-list__name">' + esc(entry.action) + ' · ' + esc(entry.entity_type) + ' #' + esc(entry.entity_ref) + '</div>' +
+						'<div class="alb-ep-list__sub">' + esc(entry.created_at) + ' · ' + esc(I18N.by) + ' #' + esc(entry.actor_wp_user_id) + '</div>' +
+					'</div>' +
+					'<span class="alb-ep-badge">' + esc(entry.origin) + '</span>' +
+				'</li>';
+			}).join('');
+
+			if (page === 1) {
+				el.view.innerHTML = (items.length ? '<ul class="alb-ep-list" data-audit-list>' + listHtml + '</ul>' : empty()) +
+					'<div style="text-align:center;margin-top:14px">' +
+					'<button class="alb-ep-btn" data-audit-more hidden>' + esc(I18N.load_more) + '</button></div>';
+			} else {
+				el.view.querySelector('[data-audit-list]').insertAdjacentHTML('beforeend', listHtml);
+			}
+
+			var moreButton = el.view.querySelector('[data-audit-more]');
+			if (moreButton) {
+				var shown = el.view.querySelectorAll('[data-audit-list] > li').length;
+				moreButton.hidden = shown >= (body.total || 0);
+				moreButton.onclick = function () { renderAdminAudit(page + 1); };
+			}
+		}).catch(function (error) {
+			if (page === 1) {
+				el.view.innerHTML = empty();
+			}
+			fail(error);
+		});
+	}
+
 	// ---------------- arranque ----------------
 
 	el.view.innerHTML = skeletons(3);
 	api('/me').then(function (me) {
 		state.me = me;
+		buildViews(me);
 		el.hello.textContent = new Date().getHours() < 12 ? 'Buenos días' : 'Hola';
 		el.title.textContent = me.display_name;
+		if (!VIEWS.length) {
+			el.view.innerHTML = '<div class="alb-ep-empty">' + esc(I18N.not_mapped) + '</div>';
+			return;
+		}
 		renderTabs();
 		route();
 	}).catch(function (error) {
