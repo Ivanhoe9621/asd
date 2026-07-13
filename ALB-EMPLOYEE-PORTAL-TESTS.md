@@ -23,6 +23,8 @@
 ## 1. Instalación y migraciones (paso 4: entorno de pruebas)
 
 - [ ] Página de pruebas creada (borrador/privada, ej. `/portal-test`) con `[alb_employee_portal]` — NO enlazada desde el sitio público
+- [ ] **Caché (auditoría R1):** URL del portal añadida a las exclusiones de página de Breeze Y de Varnish (Cloudways) — el nonce embebido no debe cachearse jamás
+- [ ] **Caché (auditoría R4):** `portal.js` excluido de la minificación/combinación de JS de Breeze
 - [ ] ZIP del plugin genera rutas con `/` (verificado antes de subir — lección aprendida de alb-catalog v1.0.2)
 - [ ] Plugin activa sin errores fatales ni warnings en pantalla
 - [ ] Las 5 tablas existen: `alb_ep_modules`, `alb_ep_employee_map`, `alb_ep_audit_log`, `alb_ep_service_employee_meta`, `alb_ep_service_requests`
@@ -131,7 +133,10 @@
 - [ ] `ALB-EMPLOYEE-PORTAL.md` actualizado con los hallazgos de la sección 0 (cierra la sección 7 del documento de arquitectura)
 - [ ] Versión etiquetada `1.0.0` (sin `-rc`) y copia del ZIP desplegado guardada
 - [ ] Página real del portal creada (URL definitiva decidida: ______) y la de pruebas eliminada
+- [ ] Riesgos Medios de la auditoría ([ALB-EMPLOYEE-PORTAL-AUDIT.md](ALB-EMPLOYEE-PORTAL-AUDIT.md)) resueltos o aceptados por escrito (R1 caché, R2 práctica post-update de Amelia, R3 purga opt-in)
 - [ ] Visto bueno explícito de Ivanhoe
+
+**Práctica permanente (auditoría R2):** tras cada actualización de Amelia, abrir la pestaña Equipo del portal (o `GET /admin/status`) y confirmar tablas 6/6 antes de dar el update por bueno.
 
 ---
 
