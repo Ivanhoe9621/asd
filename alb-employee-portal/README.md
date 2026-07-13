@@ -42,4 +42,21 @@ includes/
 
 ## Instalación en el servidor
 
-Igual que alb-catalog: comprimir esta carpeta en un ZIP (cuidando que las rutas usen `/`, no `\` — ver historial de despliegue en SUMMARY.md) y subirlo en wp-admin → Plugins, o pegar archivos por el editor de plugins. Tras activar, mapear cada usuario WP a su empleado con `PUT /wp-json/alb-employee-portal/v1/admin/employee-map`.
+Igual que alb-catalog: comprimir esta carpeta en un ZIP (cuidando que las rutas usen `/`, no `\` — ver historial de despliegue en SUMMARY.md) y subirlo en wp-admin → Plugins, o pegar archivos por el editor de plugins. Tras activar, mapear cada usuario WP a su empleado con `PUT /wp-json/alb-employee-portal/v1/admin/employee-map` o desde la pestaña Equipo del portal.
+
+## Desinstalación
+
+Patrón WooCommerce, en dos niveles:
+
+- **Por defecto (desinstalar desde wp-admin → Plugins → Borrar): NO se elimina ningún dato.** Las tablas `alb_ep_*` (metadatos de servicios, propuestas, auditoría, mapeo) y las opciones del plugin se conservan; reinstalar el plugin recupera todo tal cual estaba.
+- **Purga total (opt-in explícito):** añadir a `wp-config.php` **antes** de borrar el plugin:
+
+  ```php
+  define( 'ALB_EP_UNINSTALL_DROP_DATA', true );
+  ```
+
+  Con la constante en `true`, la desinstalación elimina todo lo propio del plugin: sus 5 tablas (lista explícita, no por patrón), sus opciones, sus transients y sus eventos programados con prefijo `alb_ep_`.
+
+**Qué NO se elimina jamás, con o sin constante:** nada de Amelia, de WordPress ni de otros plugins. Las imágenes que los empleados subieron a la biblioteca de medios son contenido de WordPress y tampoco se tocan (eliminarlas, si se quisiera, es una decisión manual en Medios).
+
+Recordar quitar la constante de `wp-config.php` después de la purga.

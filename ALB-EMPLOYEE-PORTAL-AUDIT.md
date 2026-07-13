@@ -84,7 +84,7 @@ Ordenado por severidad. **No queda ningún riesgo Alto conocido en el código.**
 |---|---|---|---|
 | R1 | Página del portal cacheada con nonce embebido (Breeze/Varnish mal configurados) → API entera responde 403 a usuarios reales | **Media** | Operativa: excluir la URL del portal de Breeze y Varnish antes de publicar (checklist §1); el default de ambos ya no cachea sesiones |
 | R2 | Actualización futura de Amelia renombra columnas → vistas del proveedor en 503 hasta ajustar el adaptador (1 archivo) | **Media** | Diseño degrada limpio + diagnóstico en Equipo//admin/status; revisar tras cada update de Amelia (checklist) |
-| R3 | Desinstalación deja tablas y una opción autoload huérfanas; no existe purga opt-in | **Media** | Propuesta de 2 líneas en §8, pendiente de OK de Ivanhoe (único cambio de código sugerido) |
+| R3 | ~~Desinstalación deja tablas y una opción autoload huérfanas; no existe purga opt-in~~ | ~~Media~~ **Resuelto en rc.3** | Purga opt-in con `ALB_EP_UNINSTALL_DROP_DATA` (patrón WooCommerce), probada en ambos escenarios con harness; default sigue conservando datos |
 | R4 | Minificación de JS de Breeze podría romper portal.js | **Media-Baja** | Excluir de minificación (checklist §1); el script es IIFE sin dependencias |
 | R5 | Carrera admin-admin en la misma propuesta (aprobar vs rechazar simultáneos) → last-write-wins auditado | **Baja** | Solo hay un admin hoy; transiciones inválidas ya bloqueadas (rc.2); bloqueo optimista documentado como mejora futura |
 | R6 | Interrupción entre escritura y auditoría → cambio sin rastro (nunca corrupción) | **Baja** | Escrituras monofila atómicas; orden escritura→auditoría garantiza que la auditoría nunca miente |

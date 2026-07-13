@@ -30,6 +30,8 @@
 - [ ] Las 5 tablas existen: `alb_ep_modules`, `alb_ep_employee_map`, `alb_ep_audit_log`, `alb_ep_service_employee_meta`, `alb_ep_service_requests`
 - [ ] `alb_ep_modules` registra `core` + 4 módulos con sus versiones de esquema
 - [ ] Desactivar y reactivar: sin errores, sin tablas duplicadas, datos intactos (migraciones idempotentes)
+- [ ] **Desinstalación conservando datos (default):** borrar el plugin desde wp-admin SIN la constante → verificar en la BD que las 5 tablas `alb_ep_*` y la opción `alb_ep_schema_versions` siguen existiendo; reinstalar → mapeos, meta y propuestas intactos
+- [ ] **Desinstalación con purga (opt-in):** definir `ALB_EP_UNINSTALL_DROP_DATA` en `true` en wp-config.php, borrar el plugin → verificar que NO queda ninguna tabla `alb_ep_*` ni ninguna fila `alb_ep_%`/`_transient_alb_ep_%` en wp_options, y que las tablas `wp_amelia_*` y el resto de wp_options están intactas; quitar la constante al terminar
 - [ ] `GET /wp-json/alb-employee-portal/v1/admin/status` como admin: `tables` 6/6 en `true`, versión correcta
 - [ ] Si alguna tabla sale `false` en el diagnóstico: anotar cuál y ajustar la introspección del adaptador ANTES de seguir
 
