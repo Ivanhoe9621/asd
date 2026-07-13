@@ -47,6 +47,7 @@ class Portal_UI {
 				'stats'           => __( 'Estadísticas', 'alb-employee-portal' ),
 				'save'            => __( 'Guardar', 'alb-employee-portal' ),
 				'description'     => __( 'Descripción corta', 'alb-employee-portal' ),
+				'category'        => __( 'Categoría', 'alb-employee-portal' ),
 				'cancel'          => __( 'Cancelar', 'alb-employee-portal' ),
 				'edit'            => __( 'Editar', 'alb-employee-portal' ),
 				'visible'         => __( 'Visible en el catálogo', 'alb-employee-portal' ),

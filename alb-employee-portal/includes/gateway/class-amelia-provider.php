@@ -76,6 +76,14 @@ class Amelia_Provider implements Booking_Provider {
 	public function employee_offers_service( $employee_ref, $service_ref ) {
 		global $wpdb;
 
+		// En Amelia las referencias son IDs numéricos: un ref no canónico
+		// ('12abc' pasaría la autorización de 12 pero se almacenaría como
+		// texto huérfano) se rechaza aquí, donde el proveedor conoce su
+		// propio formato.
+		if ( (string) (int) $service_ref !== (string) $service_ref || (int) $service_ref <= 0 ) {
+			return false;
+		}
+
 		$p2s = $this->table( 'providers_to_services' );
 		if ( ! $p2s ) {
 			return $this->unavailable();
@@ -148,15 +156,22 @@ class Amelia_Provider implements Booking_Provider {
 		 * El detalle de cliente y precio por cita depende de dos tablas más
 		 * de Amelia; si esta versión no las expone como se espera, la
 		 * agenda funciona igual sin esos campos.
+		 *
+		 * IMPORTANTE: una cita grupal tiene N filas en customer_bookings —
+		 * se agrega por cita (una fila por cita SIEMPRE): nombres
+		 * concatenados, precio sumado y la lista de clientes en
+		 * customer_refs, para no duplicar la agenda ni inflar estadísticas.
 		 */
-		$customer_fields = "NULL AS customer_ref, NULL AS customer_name, NULL AS price";
+		$customer_fields = "NULL AS customer_refs, NULL AS customer_name, NULL AS price";
 		$customer_join   = '';
+		$group_by        = '';
 		if ( $bookings && $users ) {
-			$customer_fields = "cb.customerId AS customer_ref,
-						TRIM(CONCAT(COALESCE(u.firstName,''), ' ', COALESCE(u.lastName,''))) AS customer_name,
-						cb.price AS price";
+			$customer_fields = "GROUP_CONCAT(DISTINCT cb.customerId) AS customer_refs,
+						GROUP_CONCAT(DISTINCT TRIM(CONCAT(COALESCE(u.firstName,''), ' ', COALESCE(u.lastName,''))) SEPARATOR ', ') AS customer_name,
+						SUM(cb.price) AS price";
 			$customer_join   = "LEFT JOIN {$bookings} cb ON cb.appointmentId = a.id
 						LEFT JOIN {$users} u ON u.id = cb.customerId";
+			$group_by        = 'GROUP BY a.id, a.serviceId, a.bookingStart, a.bookingEnd, a.status';
 		}
 
 		$rows = $wpdb->get_results(
@@ -166,6 +181,7 @@ class Amelia_Provider implements Booking_Provider {
 				 FROM {$appointments} a
 				 {$customer_join}
 				 WHERE a.providerId = %d AND a.bookingStart >= %s AND a.bookingStart < %s
+				 {$group_by}
 				 ORDER BY a.bookingStart ASC",
 				(int) $employee_ref,
 				$from . ' 00:00:00',
@@ -179,10 +195,11 @@ class Amelia_Provider implements Booking_Provider {
 		}
 
 		foreach ( $rows as &$row ) {
-			$row['id']           = (string) $row['id'];
-			$row['service_ref']  = (string) $row['service_ref'];
-			$row['customer_ref'] = null === $row['customer_ref'] ? null : (string) $row['customer_ref'];
-			$row['price']        = null === $row['price'] ? null : (float) $row['price'];
+			$row['id']            = (string) $row['id'];
+			$row['service_ref']   = (string) $row['service_ref'];
+			$row['customer_refs'] = empty( $row['customer_refs'] ) ? array() : explode( ',', $row['customer_refs'] );
+			$row['customer_ref']  = $row['customer_refs'] ? $row['customer_refs'][0] : null;
+			$row['price']         = null === $row['price'] ? null : (float) $row['price'];
 		}
 		return $rows;
 	}
@@ -231,15 +248,12 @@ class Amelia_Provider implements Booking_Provider {
 	// ---------------------------------------------------------------
 
 	public function update_employee_service_pricing( $employee_ref, $service_ref, $price, $capacity = null ) {
-		$container = $this->internal_container();
-		if ( null !== $container ) {
-			/*
-			 * TODO(sección 7.2): implementar contra el command handler real
-			 * una vez inspeccionado el código premium instalado en el
-			 * servidor. No se implementa a ciegas.
-			 */
-			return $this->unsupported( __METHOD__ );
-		}
+		/*
+		 * TODO(sección 7.2): implementar contra el command handler real del
+		 * contenedor interno (filtro alb_ep_amelia_container) una vez
+		 * inspeccionado el código premium instalado en el servidor. No se
+		 * implementa a ciegas.
+		 */
 		return $this->unsupported( __METHOD__ );
 	}
 

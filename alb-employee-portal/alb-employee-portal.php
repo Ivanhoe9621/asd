@@ -3,7 +3,7 @@
  * Plugin Name:       ALB Employee Portal
  * Plugin URI:        https://albookings.com
  * Description:       Panel privado por empleado sobre el proveedor de reservas (Amelia): servicios, propuestas, clientes, agenda y estadísticas. Núcleo modular de la plataforma ALB.
- * Version:           1.0.0-rc.1
+ * Version:           1.0.0-rc.2
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            AL Bookings LLC
@@ -14,7 +14,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'ALB_EP_VERSION', '1.0.0-rc.1' );
+define( 'ALB_EP_VERSION', '1.0.0-rc.2' );
 define( 'ALB_EP_FILE', __FILE__ );
 define( 'ALB_EP_DIR', plugin_dir_path( __FILE__ ) );
 define( 'ALB_EP_REST_NAMESPACE', 'alb-employee-portal/v1' );

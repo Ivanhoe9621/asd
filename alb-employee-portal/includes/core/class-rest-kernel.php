@@ -14,6 +14,15 @@ class Rest_Kernel {
 	const ACCESS_EMPLOYEE = 'employee';
 	const ACCESS_ADMIN    = 'admin';
 
+	/**
+	 * Cualquier usuario autenticado, mapeado o no. Solo para rutas que
+	 * toleran employee_ref null (ej. /me, que es donde el frontend descubre
+	 * si el usuario es admin sin mapear — de lo contrario un admin recién
+	 * instalado no podría llegar nunca a la pantalla que crea el primer
+	 * mapeo).
+	 */
+	const ACCESS_ANY = 'any';
+
 	/** @var Identity */
 	private $identity;
 
@@ -48,6 +57,8 @@ class Rest_Kernel {
 						if ( is_wp_error( $employee_ref ) ) {
 							return $employee_ref;
 						}
+					} elseif ( self::ACCESS_ANY === $access ) {
+						$employee_ref = $this->identity->current_employee_ref();
 					}
 
 					$result = call_user_func( $handler, $request, $employee_ref );
@@ -77,6 +88,10 @@ class Rest_Kernel {
 				__( 'Solo el administrador puede realizar esta acción.', 'alb-employee-portal' ),
 				array( 'status' => 403 )
 			);
+		}
+
+		if ( self::ACCESS_ANY === $access ) {
+			return true;
 		}
 
 		if ( self::ACCESS_EMPLOYEE === $access

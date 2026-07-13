@@ -50,7 +50,9 @@ class Stats_Module implements Core\Module {
 		if ( '' === $month ) {
 			$month = gmdate( 'Y-m' );
 		}
-		$parsed = \DateTime::createFromFormat( 'Y-m', $month );
+		// '!' resetea el día a 1: sin él, PHP hereda el día de HOY y un 31
+		// de mes convierte '2026-02' en marzo, rechazando un mes válido.
+		$parsed = \DateTime::createFromFormat( '!Y-m', $month );
 		if ( ! $parsed || $parsed->format( 'Y-m' ) !== $month ) {
 			return new \WP_Error(
 				'alb_ep_invalid_month',
@@ -85,8 +87,9 @@ class Stats_Module implements Core\Module {
 				}
 				$service_counts[ $appointment['service_ref'] ] = 1 + ( $service_counts[ $appointment['service_ref'] ] ?? 0 );
 
-				if ( ! empty( $appointment['customer_ref'] ) ) {
-					$customer_bookings[ $appointment['customer_ref'] ] = 1 + ( $customer_bookings[ $appointment['customer_ref'] ] ?? 0 );
+				// Las citas grupales traen varios clientes en customer_refs.
+				foreach ( (array) ( $appointment['customer_refs'] ?? array() ) as $customer_ref ) {
+					$customer_bookings[ $customer_ref ] = 1 + ( $customer_bookings[ $customer_ref ] ?? 0 );
 				}
 			}
 		}

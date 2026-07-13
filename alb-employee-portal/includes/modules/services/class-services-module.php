@@ -23,6 +23,17 @@ class Services_Module implements Core\Module {
 	const STATUS_REJECTED = 'rejected';
 	const STATUS_LINKED   = 'linked';
 
+	/** Tope de la columna decimal(10,2) — un precio mayor rompería el insert. */
+	const MAX_PRICE = 99999999.99;
+
+	/** Transiciones de estado válidas para una propuesta. */
+	const TRANSITIONS = array(
+		self::STATUS_PENDING  => array( self::STATUS_APPROVED, self::STATUS_REJECTED ),
+		self::STATUS_APPROVED => array( self::STATUS_LINKED, self::STATUS_REJECTED ),
+		self::STATUS_REJECTED => array(),
+		self::STATUS_LINKED   => array(),
+	);
+
 	/** @var Booking_Provider */
 	private $gateway;
 
@@ -108,6 +119,7 @@ class Services_Module implements Core\Module {
 
 	public function register_routes( Core\Rest_Kernel $rest ) {
 		$rest->route( '/services', 'GET', array( $this, 'list_services' ) );
+		$rest->route( '/categories', 'GET', array( $this, 'list_categories' ) );
 		$rest->route( '/services/(?P<id>[\w-]+)/meta', 'PUT', array( $this, 'update_meta' ) );
 		$rest->route( '/services/(?P<id>[\w-]+)/pricing', 'PUT', array( $this, 'update_pricing' ) );
 		$rest->route( '/service-requests', 'GET', array( $this, 'list_requests' ) );
@@ -142,47 +154,42 @@ class Services_Module implements Core\Module {
 		return array( 'items' => $services );
 	}
 
+	public function list_categories( \WP_REST_Request $request, $employee_ref ) {
+		$categories = $this->gateway->get_categories();
+		if ( is_wp_error( $categories ) ) {
+			return $categories;
+		}
+		return array( 'items' => $categories );
+	}
+
 	public function update_meta( \WP_REST_Request $request, $employee_ref ) {
 		global $wpdb;
 
 		$service_ref = (string) $request['id'];
 
-		$owns = $this->gateway->employee_offers_service( $employee_ref, $service_ref );
+		$owns = $this->require_owned_service( $employee_ref, $service_ref );
 		if ( is_wp_error( $owns ) ) {
 			return $owns;
-		}
-		if ( ! $owns ) {
-			return new \WP_Error(
-				'alb_ep_forbidden',
-				__( 'Este servicio no está asignado a tu perfil.', 'alb-employee-portal' ),
-				array( 'status' => 403 )
-			);
 		}
 
 		$before = $this->meta_row( $employee_ref, $service_ref );
 
 		$data = array(
-			'short_description' => null,
-			'image_id'          => null,
-			'visible'           => 1,
+			'short_description' => $before ? $before['short_description'] : null,
+			'image_id'          => $before && $before['image_id'] ? (int) $before['image_id'] : null,
+			'visible'           => $before ? (int) $before['visible'] : 1,
 		);
-		if ( $before ) {
-			$data['short_description'] = $before['short_description'];
-			$data['image_id']          = $before['image_id'];
-			$data['visible']           = (int) $before['visible'];
-		}
 
 		if ( $request->has_param( 'short_description' ) ) {
 			$data['short_description'] = sanitize_textarea_field( (string) $request['short_description'] );
 		}
 		if ( $request->has_param( 'image_id' ) ) {
 			$image_id = absint( $request['image_id'] );
-			if ( $image_id && 'attachment' !== get_post_type( $image_id ) ) {
-				return new \WP_Error(
-					'alb_ep_invalid_image',
-					__( 'La imagen indicada no existe en la biblioteca de medios.', 'alb-employee-portal' ),
-					array( 'status' => 400 )
-				);
+			if ( $image_id ) {
+				$error = $this->validate_image( $image_id );
+				if ( is_wp_error( $error ) ) {
+					return $error;
+				}
 			}
 			$data['image_id'] = $image_id ? $image_id : null;
 		}
@@ -190,25 +197,27 @@ class Services_Module implements Core\Module {
 			$data['visible'] = rest_sanitize_boolean( $request['visible'] ) ? 1 : 0;
 		}
 
-		$wpdb->query(
-			$wpdb->prepare(
-				'INSERT INTO ' . self::meta_table() . '
-					(provider, ext_service_id, ext_employee_id, short_description, image_id, visible, updated_at)
-				 VALUES (%s, %s, %s, %s, %d, %d, %s)
-				 ON DUPLICATE KEY UPDATE
-					short_description = VALUES(short_description),
-					image_id = VALUES(image_id),
-					visible = VALUES(visible),
-					updated_at = VALUES(updated_at)',
-				$this->gateway->key(),
-				$service_ref,
-				$employee_ref,
-				$data['short_description'],
-				(int) $data['image_id'],
-				$data['visible'],
-				current_time( 'mysql', true )
-			)
-		);
+		$data['updated_at'] = current_time( 'mysql', true );
+
+		// insert()/update() de wpdb sí escriben NULL real en las columnas
+		// nullable (el upsert preparado con %d convertía NULL en 0).
+		if ( $before ) {
+			$written = $wpdb->update( self::meta_table(), $data, array( 'id' => $before['id'] ) );
+		} else {
+			$written = $wpdb->insert( self::meta_table(), $data + array(
+				'provider'        => $this->gateway->key(),
+				'ext_service_id'  => $service_ref,
+				'ext_employee_id' => $employee_ref,
+			) );
+		}
+
+		if ( false === $written ) {
+			return new \WP_Error(
+				'alb_ep_db_error',
+				__( 'No se pudo guardar el cambio. Intenta de nuevo.', 'alb-employee-portal' ),
+				array( 'status' => 500 )
+			);
+		}
 
 		$after = $this->meta_row( $employee_ref, $service_ref );
 
@@ -224,20 +233,13 @@ class Services_Module implements Core\Module {
 	public function update_pricing( \WP_REST_Request $request, $employee_ref ) {
 		$service_ref = (string) $request['id'];
 
-		$owns = $this->gateway->employee_offers_service( $employee_ref, $service_ref );
+		$owns = $this->require_owned_service( $employee_ref, $service_ref );
 		if ( is_wp_error( $owns ) ) {
 			return $owns;
 		}
-		if ( ! $owns ) {
-			return new \WP_Error(
-				'alb_ep_forbidden',
-				__( 'Este servicio no está asignado a tu perfil.', 'alb-employee-portal' ),
-				array( 'status' => 403 )
-			);
-		}
 
 		$price = $request->get_param( 'price' );
-		if ( null === $price || ! is_numeric( $price ) || (float) $price < 0 ) {
+		if ( null === $price || ! is_numeric( $price ) || (float) $price < 0 || (float) $price > self::MAX_PRICE ) {
 			return new \WP_Error(
 				'alb_ep_invalid_price',
 				__( 'Indica un precio válido.', 'alb-employee-portal' ),
@@ -307,12 +309,26 @@ class Services_Module implements Core\Module {
 			);
 		}
 
+		$price = $request->get_param( 'price' );
+		if ( null !== $price && '' !== $price ) {
+			if ( ! is_numeric( $price ) || (float) $price < 0 || (float) $price > self::MAX_PRICE ) {
+				return new \WP_Error(
+					'alb_ep_invalid_price',
+					__( 'Indica un precio válido.', 'alb-employee-portal' ),
+					array( 'status' => 400 )
+				);
+			}
+			$price = (float) $price;
+		} else {
+			$price = null;
+		}
+
 		$row = array(
 			'provider'             => $this->gateway->key(),
 			'ext_employee_id'      => $employee_ref,
 			'proposed_name'        => $name,
 			'proposed_description' => sanitize_textarea_field( (string) $request->get_param( 'description' ) ),
-			'proposed_price'       => is_numeric( $request->get_param( 'price' ) ) ? (float) $request->get_param( 'price' ) : null,
+			'proposed_price'       => $price,
 			'proposed_duration'    => absint( $request->get_param( 'duration' ) ) ?: null,
 			'proposed_category_id' => sanitize_text_field( (string) $request->get_param( 'category_id' ) ),
 			'proposed_image_id'    => absint( $request->get_param( 'image_id' ) ) ?: null,
@@ -320,7 +336,13 @@ class Services_Module implements Core\Module {
 			'created_at'           => current_time( 'mysql', true ),
 		);
 
-		$wpdb->insert( self::requests_table(), $row );
+		if ( false === $wpdb->insert( self::requests_table(), $row ) ) {
+			return new \WP_Error(
+				'alb_ep_db_error',
+				__( 'No se pudo guardar la propuesta. Intenta de nuevo.', 'alb-employee-portal' ),
+				array( 'status' => 500 )
+			);
+		}
 		$id = (int) $wpdb->insert_id;
 
 		$this->audit->log( 'service_request.create', 'service_request', $id, null, $row, Core\Audit::ORIGIN_PORTAL, $employee_ref );
@@ -362,12 +384,17 @@ class Services_Module implements Core\Module {
 		}
 
 		$status  = sanitize_text_field( (string) $request->get_param( 'status' ) );
-		$allowed = array( self::STATUS_APPROVED, self::STATUS_REJECTED, self::STATUS_LINKED );
+		$allowed = isset( self::TRANSITIONS[ $before['status'] ] ) ? self::TRANSITIONS[ $before['status'] ] : array();
 		if ( ! in_array( $status, $allowed, true ) ) {
 			return new \WP_Error(
-				'alb_ep_invalid_status',
-				__( 'Estado no válido: usa approved, rejected o linked.', 'alb-employee-portal' ),
-				array( 'status' => 400 )
+				'alb_ep_invalid_transition',
+				sprintf(
+					/* translators: 1: estado actual, 2: estados permitidos */
+					__( 'Transición no válida desde "%1$s". Permitidas: %2$s.', 'alb-employee-portal' ),
+					$before['status'],
+					$allowed ? implode( ', ', $allowed ) : __( 'ninguna (estado final)', 'alb-employee-portal' )
+				),
+				array( 'status' => 409 )
 			);
 		}
 
@@ -388,7 +415,13 @@ class Services_Module implements Core\Module {
 			$update['ext_service_id_result'] = $result_ref;
 		}
 
-		$wpdb->update( self::requests_table(), $update, array( 'id' => $id ) );
+		if ( false === $wpdb->update( self::requests_table(), $update, array( 'id' => $id ) ) ) {
+			return new \WP_Error(
+				'alb_ep_db_error',
+				__( 'No se pudo actualizar la propuesta. Intenta de nuevo.', 'alb-employee-portal' ),
+				array( 'status' => 500 )
+			);
+		}
 		$after = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM ' . self::requests_table() . ' WHERE id = %d', $id ), ARRAY_A );
 
 		$this->audit->log( 'service_request.' . $status, 'service_request', $id, $before, $after, Core\Audit::ORIGIN_ADMIN, $before['ext_employee_id'] );
@@ -401,6 +434,55 @@ class Services_Module implements Core\Module {
 	}
 
 	// ---------------------------------------------------------------
+
+	/**
+	 * Verifica en el proveedor que el servicio esté asignado al empleado.
+	 * Único punto de esta autorización — la comparten meta y pricing.
+	 *
+	 * @return true|\WP_Error
+	 */
+	private function require_owned_service( $employee_ref, $service_ref ) {
+		$owns = $this->gateway->employee_offers_service( $employee_ref, $service_ref );
+		if ( is_wp_error( $owns ) ) {
+			return $owns;
+		}
+		if ( ! $owns ) {
+			return new \WP_Error(
+				'alb_ep_forbidden',
+				__( 'Este servicio no está asignado a tu perfil.', 'alb-employee-portal' ),
+				array( 'status' => 403 )
+			);
+		}
+		return true;
+	}
+
+	/**
+	 * Un attachment solo es utilizable como imagen del portal si es una
+	 * imagen real y pertenece al usuario actual (o el actor es admin):
+	 * sin este control, un empleado podría publicar —y así descubrir la
+	 * URL de— cualquier archivo de la biblioteca de medios.
+	 *
+	 * @return true|\WP_Error
+	 */
+	private function validate_image( $image_id ) {
+		if ( 'attachment' !== get_post_type( $image_id ) || ! wp_attachment_is_image( $image_id ) ) {
+			return new \WP_Error(
+				'alb_ep_invalid_image',
+				__( 'La imagen indicada no existe en la biblioteca de medios o no es una imagen.', 'alb-employee-portal' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		$owner = (int) get_post_field( 'post_author', $image_id );
+		if ( $owner !== get_current_user_id() && ! $this->identity->is_platform_admin() ) {
+			return new \WP_Error(
+				'alb_ep_forbidden',
+				__( 'Solo puedes usar imágenes subidas por ti.', 'alb-employee-portal' ),
+				array( 'status' => 403 )
+			);
+		}
+		return true;
+	}
 
 	/** @return array<string,array> Meta indexada por ext_service_id. */
 	private function meta_for_employee( $employee_ref ) {

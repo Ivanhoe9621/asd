@@ -1,6 +1,6 @@
 # ALB Employee Portal — Arquitectura definitiva (v1.1, sin código)
 
-> Estado: **RELEASE CANDIDATE 1.0.0-rc.1 (decisión de Ivanhoe, 2026-07-10). La v1.0 NO está terminada: las escrituras hacia Amelia (crear clientes, modificar precios) son parte del alcance original y siguen pendientes de la verificación en el entorno real. El plan de cierre y el checklist de pruebas están en [`ALB-EMPLOYEE-PORTAL-TESTS.md`](ALB-EMPLOYEE-PORTAL-TESTS.md).**
+> Estado: **RELEASE CANDIDATE 1.0.0-rc.2 (rc.1 + correcciones de la revisión de código interna del 2026-07-13). La v1.0 NO está terminada: las escrituras hacia Amelia (crear clientes, modificar precios) son parte del alcance original y siguen pendientes de la verificación en el entorno real. El plan de cierre y el checklist de pruebas están en [`ALB-EMPLOYEE-PORTAL-TESTS.md`](ALB-EMPLOYEE-PORTAL-TESTS.md).**
 > Última actualización: 2026-07-10
 
 ---

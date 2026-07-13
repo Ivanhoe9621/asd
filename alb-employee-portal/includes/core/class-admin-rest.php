@@ -27,7 +27,9 @@ class Admin_Rest {
 		$this->gateway  = $gateway;
 
 		add_action( 'rest_api_init', function () use ( $rest ) {
-			$rest->route( '/me', 'GET', array( $this, 'me' ) );
+			// ACCESS_ANY: /me debe responder también al admin sin mapear,
+			// que es quien crea el primer vínculo usuario↔empleado.
+			$rest->route( '/me', 'GET', array( $this, 'me' ), Rest_Kernel::ACCESS_ANY );
 			$rest->route( '/admin/employee-map', 'GET', array( $this, 'list_map' ), Rest_Kernel::ACCESS_ADMIN );
 			$rest->route( '/admin/employee-map', 'PUT', array( $this, 'update_map' ), Rest_Kernel::ACCESS_ADMIN );
 			$rest->route( '/admin/employees', 'GET', array( $this, 'list_provider_employees' ), Rest_Kernel::ACCESS_ADMIN );
@@ -119,7 +121,8 @@ class Admin_Rest {
 
 	public function list_audit( \WP_REST_Request $request, $employee_ref ) {
 		$page     = max( 1, absint( $request->get_param( 'page' ) ) );
-		$per_page = min( 100, max( 1, absint( $request->get_param( 'per_page' ) ) ?: 50 ) );
+		$per_page = absint( $request->get_param( 'per_page' ) );
+		$per_page = min( 100, $per_page > 0 ? $per_page : 50 );
 
 		$filters = array();
 		if ( $request->get_param( 'action' ) ) {

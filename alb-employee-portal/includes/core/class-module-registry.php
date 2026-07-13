@@ -42,8 +42,24 @@ class Module_Registry {
 		return $active;
 	}
 
-	/** Ejecuta las migraciones pendientes del núcleo y de cada módulo. */
+	/**
+	 * Ejecuta las migraciones pendientes del núcleo y de cada módulo.
+	 *
+	 * La comparación rápida usa una opción autoload (cero consultas extra):
+	 * solo cuando el mapa de versiones esperado difiere del guardado se toca
+	 * la tabla de módulos y se corre dbDelta. Sin esta puerta, cada carga de
+	 * página del sitio pagaría SHOW TABLES + un SELECT por módulo.
+	 */
 	public function migrate() {
+		$expected = array( self::CORE_KEY => self::CORE_SCHEMA_VERSION );
+		foreach ( $this->modules as $module ) {
+			$expected[ $module->key() ] = $module->schema_version();
+		}
+
+		if ( get_option( 'alb_ep_schema_versions' ) === $expected ) {
+			return;
+		}
+
 		if ( $this->core_needs_migration() ) {
 			$this->migrate_core();
 		}
@@ -56,6 +72,8 @@ class Module_Registry {
 			$module->migrate( $installed );
 			$this->record_version( $module->key(), $module->schema_version() );
 		}
+
+		update_option( 'alb_ep_schema_versions', $expected, true );
 	}
 
 	private function core_needs_migration() {

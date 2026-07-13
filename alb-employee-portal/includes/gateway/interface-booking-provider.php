@@ -77,9 +77,12 @@ interface Booking_Provider {
 	 * @param string $employee_ref
 	 * @param string $from Fecha ISO (Y-m-d).
 	 * @param string $to   Fecha ISO (Y-m-d).
-	 * @return array[]|\WP_Error id, service_ref, starts_at, ends_at, status y,
-	 *                           si el proveedor lo expone, customer_ref,
-	 *                           customer_name y price por cita.
+	 * @return array[]|\WP_Error UNA fila por cita (las citas grupales se
+	 *                           agregan): id, service_ref, starts_at,
+	 *                           ends_at, status y, si el proveedor lo
+	 *                           expone, customer_refs (array), customer_ref
+	 *                           (el primero), customer_name (concatenado) y
+	 *                           price (suma de la cita).
 	 */
 	public function get_appointments( $employee_ref, $from, $to );
 

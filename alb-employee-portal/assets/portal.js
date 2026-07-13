@@ -37,7 +37,10 @@
 			options.headers || {}
 		);
 		options.credentials = 'same-origin';
-		return fetch(CFG.root + path, options).then(function (response) {
+		// Con permalinks "Plain", root ya trae '?rest_route=': el query
+		// string del path debe encadenarse con '&' o WP no resuelve la ruta.
+		var url = CFG.root.indexOf('?') === -1 ? CFG.root + path : CFG.root + path.replace('?', '&');
+		return fetch(url, options).then(function (response) {
 			return response.json().then(function (body) {
 				if (!response.ok) {
 					var error = new Error((body && body.message) || I18N.error_generic);
@@ -75,6 +78,32 @@
 			html += '<div class="alb-ep-skel"></div>';
 		}
 		return html + '</div>';
+	}
+
+	/*
+	 * Guardia contra respuestas obsoletas: cada render toma un número de
+	 * secuencia; si otra vista (u otro render de la misma) empezó después,
+	 * los .then/.catch de la request vieja no tocan el DOM. Sin esto, una
+	 * respuesta lenta de la pestaña anterior pisa la pestaña actual.
+	 */
+	var viewSeq = 0;
+	function beginView(skel) {
+		var seq = ++viewSeq;
+		if (skel !== 0) {
+			el.view.innerHTML = skeletons(skel || 3);
+		}
+		return function (fn) {
+			return function (arg) {
+				if (seq === viewSeq) {
+					return fn(arg);
+				}
+			};
+		};
+	}
+
+	function viewError(error) {
+		el.view.innerHTML = empty();
+		fail(error);
 	}
 
 	function empty() {
@@ -164,8 +193,8 @@
 	// ---------------- vista: servicios ----------------
 
 	function renderServices() {
-		el.view.innerHTML = skeletons(3);
-		api('/services').then(function (body) {
+		var when = beginView(3);
+		api('/services').then(when(function (body) {
 			var items = body.items || [];
 			if (!items.length) {
 				el.view.innerHTML = empty();
@@ -173,10 +202,7 @@
 			}
 			el.view.innerHTML = '<div class="alb-ep__grid alb-ep__grid--2">' +
 				items.map(serviceCard).join('') + '</div>';
-		}).catch(function (error) {
-			el.view.innerHTML = empty();
-			fail(error);
-		});
+		})).catch(when(viewError));
 	}
 
 	function serviceCard(service) {
@@ -267,14 +293,29 @@
 	var REQUEST_BADGES = { pending: '', approved: 'alb-ep-badge--ok', rejected: 'alb-ep-badge--bad', linked: 'alb-ep-badge--ok' };
 
 	function renderRequests() {
-		el.view.innerHTML = skeletons(2);
-		api('/service-requests').then(function (body) {
-			var items = body.items || [];
+		var when = beginView(2);
+		Promise.all([
+			api('/service-requests'),
+			api('/categories').catch(function () { return { items: [] }; })
+		]).then(when(function (results) {
+			var items = results[0].items || [];
+			var categories = results[1].items || [];
+
+			var categoryField = '';
+			if (categories.length) {
+				categoryField = '<label class="alb-ep-field"><span>' + esc(I18N.category) + '</span>' +
+					'<select name="category_id"><option value=""></option>' +
+					categories.map(function (category) {
+						return '<option value="' + esc(category.id) + '">' + esc(category.name) + '</option>';
+					}).join('') + '</select></label>';
+			}
+
 			var html = '<div class="alb-ep-card alb-ep-form-card">' +
 				'<form data-request-form>' +
 					'<label class="alb-ep-field"><span>' + esc(I18N.new_request) + '</span>' +
 						'<input class="alb-ep-input" name="name" required placeholder="' + esc(I18N.new_request) + '"></label>' +
 					'<label class="alb-ep-field"><textarea name="description" rows="2" placeholder="…"></textarea></label>' +
+					categoryField +
 					'<div class="alb-ep-bar">' +
 						'<input class="alb-ep-input" name="price" type="number" min="0" step="0.01" placeholder="$">' +
 						'<input class="alb-ep-input" name="duration" type="number" min="0" step="300" placeholder="seg">' +
@@ -301,17 +342,14 @@
 			}).join('') + '</ul>';
 
 			el.view.innerHTML = html;
-		}).catch(function (error) {
-			el.view.innerHTML = empty();
-			fail(error);
-		});
+		})).catch(when(viewError));
 	}
 
 	// ---------------- vista: clientes ----------------
 
 	function renderCustomers(search) {
-		el.view.innerHTML = skeletons(3);
-		api('/customers' + (search ? '?search=' + encodeURIComponent(search) : '')).then(function (body) {
+		var when = beginView(3);
+		api('/customers' + (search ? '?search=' + encodeURIComponent(search) : '')).then(when(function (body) {
 			var items = body.items || [];
 
 			var html = '<div class="alb-ep-bar">' +
@@ -341,7 +379,7 @@
 							'<div class="alb-ep-list__name">' + esc(customer.first_name + ' ' + (customer.last_name || '')) + '</div>' +
 							'<div class="alb-ep-list__sub">' + esc(customer.phone || customer.email || '') + '</div>' +
 						'</div>' +
-						'<span class="alb-ep-badge">' + customer.bookings_count + '×</span>' +
+						'<span class="alb-ep-badge">' + esc(customer.bookings_count) + '×</span>' +
 					'</li>';
 				}).join('') + '</ul>';
 			}
@@ -351,24 +389,23 @@
 			searchInput.addEventListener('input', function () {
 				clearTimeout(searchTimer);
 				searchTimer = setTimeout(function () {
-					renderCustomers(searchInput.value.trim());
+					if (state.view === 'customers') {
+						renderCustomers(searchInput.value.trim());
+					}
 				}, 350);
 			});
 			el.view.querySelector('[data-customer-new]').addEventListener('click', function () {
 				var wrap = el.view.querySelector('[data-customer-form-wrap]');
 				wrap.hidden = !wrap.hidden;
 			});
-		}).catch(function (error) {
-			el.view.innerHTML = empty();
-			fail(error);
-		});
+		})).catch(when(viewError));
 	}
 
 	// ---------------- vista: agenda ----------------
 
 	function renderAgenda(range) {
 		range = range || 'upcoming';
-		el.view.innerHTML = skeletons(4);
+		var when = beginView(4);
 
 		var today = new Date().toISOString().slice(0, 10);
 		var past = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
@@ -377,7 +414,7 @@
 			? '?from=' + today + '&to=' + future
 			: '?from=' + past + '&to=' + today + (range === 'canceled' ? '&status=canceled' : '');
 
-		api('/appointments' + query).then(function (body) {
+		api('/appointments' + query).then(when(function (body) {
 			var items = body.items || [];
 
 			var html = '<div class="alb-ep-bar">' +
@@ -409,17 +446,14 @@
 					renderAgenda(button.getAttribute('data-range'));
 				});
 			});
-		}).catch(function (error) {
-			el.view.innerHTML = empty();
-			fail(error);
-		});
+		})).catch(when(viewError));
 	}
 
 	// ---------------- vista: estadísticas ----------------
 
 	function renderStats(month) {
-		el.view.innerHTML = skeletons(4);
-		api('/stats/summary' + (month ? '?month=' + month : '')).then(function (stats) {
+		var when = beginView(4);
+		api('/stats/summary' + (month ? '?month=' + month : '')).then(when(function (stats) {
 			var html = '<div class="alb-ep-bar">' +
 				'<input class="alb-ep-input" type="month" data-stats-month value="' + esc(stats.month) + '">' +
 			'</div>' +
@@ -437,7 +471,7 @@
 					stats.top_services.map(function (service) {
 						return '<li class="alb-ep-list__item">' +
 							'<span class="alb-ep-list__name">' + esc(service.name) + '</span>' +
-							'<span class="alb-ep-badge">' + service.bookings + '×</span></li>';
+							'<span class="alb-ep-badge">' + esc(service.bookings) + '×</span></li>';
 					}).join('') + '</ul></div>';
 			}
 
@@ -445,15 +479,12 @@
 			el.view.querySelector('[data-stats-month]').addEventListener('change', function (event) {
 				renderStats(event.target.value);
 			});
-		}).catch(function (error) {
-			el.view.innerHTML = empty();
-			fail(error);
-		});
+		})).catch(when(viewError));
 	}
 
 	function statCard(value, label) {
 		return '<div class="alb-ep-card alb-ep-stat">' +
-			'<p class="alb-ep-stat__value">' + value + '</p>' +
+			'<p class="alb-ep-stat__value">' + esc(value) + '</p>' +
 			'<p class="alb-ep-stat__label">' + esc(label) + '</p></div>';
 	}
 
@@ -461,8 +492,8 @@
 
 	function renderAdminRequests(status) {
 		status = status || 'pending';
-		el.view.innerHTML = skeletons(3);
-		api('/admin/service-requests?status=' + encodeURIComponent(status)).then(function (body) {
+		var when = beginView(3);
+		api('/admin/service-requests?status=' + encodeURIComponent(status)).then(when(function (body) {
 			var items = body.items || [];
 
 			var html = '<div class="alb-ep-bar">' +
@@ -533,19 +564,16 @@
 					}).then(function () { toast(I18N.saved); refresh(); }).catch(fail);
 				});
 			});
-		}).catch(function (error) {
-			el.view.innerHTML = empty();
-			fail(error);
-		});
+		})).catch(when(viewError));
 	}
 
 	function renderAdminTeam() {
-		el.view.innerHTML = skeletons(3);
+		var when = beginView(3);
 		Promise.all([
 			api('/admin/employee-map'),
 			api('/admin/employees').catch(function () { return { items: [] }; }),
 			api('/admin/status').catch(function () { return null; })
-		]).then(function (results) {
+		]).then(when(function (results) {
 			var mappings = results[0].items || [];
 			var employees = results[1].items || [];
 			var status = results[2];
@@ -605,18 +633,15 @@
 					})
 				}).then(function () { toast(I18N.saved); renderAdminTeam(); }).catch(fail);
 			});
-		}).catch(function (error) {
-			el.view.innerHTML = empty();
-			fail(error);
-		});
+		})).catch(when(viewError));
 	}
 
 	function renderAdminAudit(page) {
 		page = page || 1;
-		if (page === 1) {
-			el.view.innerHTML = skeletons(4);
-		}
-		api('/admin/audit?page=' + page + '&per_page=20').then(function (body) {
+		// Página 1 reemplaza la vista (con skeleton); "cargar más" solo
+		// añade, pero igualmente se descarta si el usuario cambió de pestaña.
+		var when = beginView(page === 1 ? 4 : 0);
+		api('/admin/audit?page=' + page + '&per_page=20').then(when(function (body) {
 			var items = body.items || [];
 			var listHtml = items.map(function (entry) {
 				return '<li class="alb-ep-list__item">' +
@@ -642,12 +667,12 @@
 				moreButton.hidden = shown >= (body.total || 0);
 				moreButton.onclick = function () { renderAdminAudit(page + 1); };
 			}
-		}).catch(function (error) {
+		})).catch(when(function (error) {
 			if (page === 1) {
 				el.view.innerHTML = empty();
 			}
 			fail(error);
-		});
+		}));
 	}
 
 	// ---------------- arranque ----------------
