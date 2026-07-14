@@ -2,7 +2,26 @@
 
 > Estado: **RELEASE CANDIDATE 1.0.0-rc.3 — fase de cierre hacia la 1.0.0 estable (instrucciones de Ivanhoe, 2026-07-14, ver recuadro).**
 >
-> **Reglas de cierre vigentes:** (a) el **respaldo completo del sitio ya está hecho** — no volver a pedirlo; (b) **alcance congelado**: cero funcionalidades nuevas salvo imprescindibles para el alcance original o errores críticos — todo lo demás va a la lista de la v1.1; (c) no modificar Amelia, no modificar alb-catalog salvo incompatibilidad crítica, no crear tablas salvo necesidad absoluta; (d) orden obligatorio: inspector → análisis de Amelia real → escrituras por mecanismos internos seguros → instalar rc.3 → checklist completo → corregir solo lo encontrado → repetir hasta verde → recién entonces etiquetar **1.0.0**. La v1.0 NO está terminada: las escrituras hacia Amelia (crear clientes, modificar precios) son parte del alcance original y siguen pendientes de la verificación en el entorno real. El plan de cierre y el checklist de pruebas están en [`ALB-EMPLOYEE-PORTAL-TESTS.md`](ALB-EMPLOYEE-PORTAL-TESTS.md).**
+> **Reglas de cierre vigentes:** (a) el **respaldo completo del sitio ya está hecho** — no volver a pedirlo; (b) **alcance congelado**: cero funcionalidades nuevas salvo imprescindibles para el alcance original o errores críticos — todo lo demás va a la lista de la v1.1; (c) no modificar Amelia, no modificar alb-catalog salvo incompatibilidad crítica, no crear tablas salvo necesidad absoluta; (d) orden obligatorio: inspector → análisis de Amelia real → escrituras por mecanismos internos seguros → instalar rc.3 → checklist completo → corregir solo lo encontrado → repetir hasta verde → recién entonces etiquetar **1.0.0**.
+
+### Reglas de la fase RC (instrucciones finales de Ivanhoe, 2026-07-14 — vinculantes para toda sesión)
+
+**Al recibir el informe del inspector (protocolo obligatorio):** 1) analizar el informe completo; 2) explicar exactamente qué se descubrió; 3) identificar TODAS las alternativas posibles para las escrituras; 4) justificar técnicamente la opción elegida; 5) **esperar la aprobación explícita de Ivanhoe antes de escribir una sola línea de código**. Nunca implementar una escritura solo porque exista la posibilidad técnica.
+
+**Orden de prioridad para las escrituras hacia Amelia** (nunca elegir una opción inferior si existe una superior suficientemente estable):
+1. APIs públicas oficiales.
+2. Servicios internos documentados.
+3. Command Handlers internos.
+4. Contenedor interno de Amelia.
+5. Último recurso: acceso directo a BD replicando exactamente la misma lógica que emplea Amelia.
+
+**Validación previa a habilitar cualquier escritura — demostrar:** qué clases se usarán, qué métodos, qué validaciones ejecuta Amelia, qué eventos dispara, qué efectos secundarios produce, y cómo se comporta ante errores.
+
+**Consistencia:** ninguna escritura puede dejar datos inconsistentes. Si una operación no puede garantizar consistencia, se aborta completa. Sin estados intermedios.
+
+**Antes de entregar cualquier RC nueva:** ejecutar todas las pruebas de lo modificado; verificar que no aparecen warnings nuevos; verificar que no aumenta el número de consultas; verificar que Amelia sigue funcionando exactamente igual.
+
+**Condiciones para etiquetar 1.0.0 (todas):** todas las escrituras funcionando; checklist completamente en verde; cero riesgos Altos; cero riesgos Medios sin mitigación; **aprobación explícita de Ivanhoe para publicar**. Hasta entonces, solo Release Candidates. La v1.0 NO está terminada: las escrituras hacia Amelia (crear clientes, modificar precios) son parte del alcance original y siguen pendientes de la verificación en el entorno real. El plan de cierre y el checklist de pruebas están en [`ALB-EMPLOYEE-PORTAL-TESTS.md`](ALB-EMPLOYEE-PORTAL-TESTS.md).**
 > Última actualización: 2026-07-10
 
 ---
