@@ -1,6 +1,8 @@
 # ALB Employee Portal — Arquitectura definitiva (v1.1, sin código)
 
-> Estado: **RELEASE CANDIDATE 1.0.0-rc.3 (rc.2 + desinstalación con purga opt-in, cerrando el R3 de la auditoría — única diferencia con rc.2). La v1.0 NO está terminada: las escrituras hacia Amelia (crear clientes, modificar precios) son parte del alcance original y siguen pendientes de la verificación en el entorno real. El plan de cierre y el checklist de pruebas están en [`ALB-EMPLOYEE-PORTAL-TESTS.md`](ALB-EMPLOYEE-PORTAL-TESTS.md).**
+> Estado: **RELEASE CANDIDATE 1.0.0-rc.3 — fase de cierre hacia la 1.0.0 estable (instrucciones de Ivanhoe, 2026-07-14, ver recuadro).**
+>
+> **Reglas de cierre vigentes:** (a) el **respaldo completo del sitio ya está hecho** — no volver a pedirlo; (b) **alcance congelado**: cero funcionalidades nuevas salvo imprescindibles para el alcance original o errores críticos — todo lo demás va a la lista de la v1.1; (c) no modificar Amelia, no modificar alb-catalog salvo incompatibilidad crítica, no crear tablas salvo necesidad absoluta; (d) orden obligatorio: inspector → análisis de Amelia real → escrituras por mecanismos internos seguros → instalar rc.3 → checklist completo → corregir solo lo encontrado → repetir hasta verde → recién entonces etiquetar **1.0.0**. La v1.0 NO está terminada: las escrituras hacia Amelia (crear clientes, modificar precios) son parte del alcance original y siguen pendientes de la verificación en el entorno real. El plan de cierre y el checklist de pruebas están en [`ALB-EMPLOYEE-PORTAL-TESTS.md`](ALB-EMPLOYEE-PORTAL-TESTS.md).**
 > Última actualización: 2026-07-10
 
 ---
@@ -311,6 +313,16 @@ Identity & Permissions · BookingProviderInterface + AmeliaProvider · REST Kern
 | App móvil | Consume `alb-employee-portal/v1` tal cual — la API ES el contrato |
 
 ---
+
+## 6.4. Lista de espera para la v1.1 (alcance congelado — NO entra en la 1.0.0)
+
+- Bloqueo optimista en transiciones de propuestas (`UPDATE ... WHERE status = %s`) — auditoría R5.
+- Método de gateway `get_service_names()` para abaratar el top-5 de Stats.
+- Botón de reintento / distinción de errores de red en el frontend.
+- Archivo de traducción al inglés (la infraestructura i18n ya está).
+- Rol "Amelia Manager" como admin del portal (hoy solo `manage_options`, decisión consciente).
+- Creación automática del servicio en Amelia al aprobar una propuesta (hoy: paso manual + vincular).
+- Módulos de la sección 6.3 (comisiones, reseñas, etc.).
 
 ## 7. Pendiente de verificación en servidor (no bloquea la aprobación; sí el código de escritura)
 

@@ -6,6 +6,17 @@
 
 ---
 
+## Cómo ejecutar los pasos 1–3 del plan (sesión con wp-admin, ~5 minutos)
+
+> El respaldo del sitio ya está hecho (2026-07-14). Los artefactos están en `dist/` de este repositorio.
+
+1. Descargar **`dist/alb-amelia-inspector.zip`** desde GitHub.
+2. wp-admin → Plugins → Añadir nuevo → Subir plugin → ese ZIP → Instalar → **Activar**.
+3. Ir a **Herramientas → ALB Inspector**, clic dentro del cuadro de texto (se autoselecciona) → copiar TODO.
+4. **Pegar el informe completo a Claude** en este chat. Con eso se responden todos los ítems de la sección 0 de abajo y se implementan las escrituras (paso 4 del plan).
+5. Desactivar y borrar el inspector.
+6. Cuando Claude entregue la rc con escrituras: instalar **`dist/alb-employee-portal-1.0.0-rc.X.zip`** (el más reciente) igual que en el paso 2, crear la página privada de pruebas con `[alb_employee_portal]`, y seguir el checklist desde la sección 1.
+
 ## 0. Verificación del entorno real (orden acordado, pasos 1–2)
 
 - [ ] Licencia de Amelia identificada (Amelia → Settings → License): plan ______ · ¿incluye API Elite? ______
