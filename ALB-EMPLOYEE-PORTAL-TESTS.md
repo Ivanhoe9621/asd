@@ -154,3 +154,63 @@
 ---
 
 *Preparado el 2026-07-10 sobre la RC 1.0.0-rc.1. Si durante las pruebas se corrige código, re-ejecutar la sección afectada completa, no solo el ítem que falló.*
+
+---
+
+## Apéndice A — Comandos listos para la sección 4 (seguridad)
+
+Abrir la **página del portal** con la sesión indicada en cada bloque, F12 → Consola, pegar el preámbulo una vez y luego cada prueba. Cada línea dice el resultado esperado; cualquier otro resultado es un fallo que se anota en el checklist.
+
+```js
+// PREÁMBULO (pegar primero, sirve para todos los bloques)
+const call = (p, m = 'GET', b) =>
+  fetch('/wp-json/alb-employee-portal/v1' + p, {
+    method: m, credentials: 'same-origin',
+    headers: { 'X-WP-Nonce': ALB_EP_CONFIG.nonce, 'Content-Type': 'application/json' },
+    body: b ? JSON.stringify(b) : undefined
+  }).then(r => r.json().then(j => ({ http: r.status, ...j }))).then(console.log);
+```
+
+**Bloque 1 — con sesión de EMPLEADO (por ej. María). `OTRO` = un employee_id ajeno real; `SUYO`/`AJENO` = IDs de servicio reales:**
+
+```js
+call('/services?employee_id=OTRO')                      // → 403 alb_ep_forbidden (suplantación)
+call('/stats/summary?employee_id=OTRO')                 // → 403 alb_ep_forbidden
+call('/admin/status')                                   // → 403 (escalada)
+call('/admin/audit')                                    // → 403
+call('/admin/employee-map', 'PUT', {wp_user_id: 1, ext_employee_id: '1'}) // → 403
+call('/services/AJENO/meta', 'PUT', {visible: false})   // → 403 (IDOR)
+call('/services/12abc/meta', 'PUT', {visible: false})   // → 403 (ref no canónico)
+call('/services/SUYO/meta', 'PUT', {short_description: '<script>alert(1)</script>'}) // → 200; verificar que en el portal se VE el texto literal, nunca ejecuta
+call('/services/SUYO/meta', 'PUT', {image_id: 999999})  // → 400 alb_ep_invalid_image
+call('/customers?search=%27%3B%20DROP%20TABLE')         // → 200 lista vacía, jamás error SQL
+call('/service-requests', 'POST', {name: 'x', price: -5})          // → 400 alb_ep_invalid_price
+call('/service-requests', 'POST', {name: 'x', price: 99999999999}) // → 400 alb_ep_invalid_price
+call('/appointments?from=31-12-2026')                   // → 400 alb_ep_invalid_date
+```
+
+**Bloque 2 — SIN sesión (ventana de incógnito, en la página del portal se ve el botón de login; usar la home):**
+
+```js
+fetch('/wp-json/alb-employee-portal/v1/me', {credentials:'same-origin'})
+  .then(r => console.log(r.status))                     // → 401
+```
+
+**Bloque 3 — con sesión de ADMIN:**
+
+```js
+call('/me')                                             // → 200, is_admin: true
+call('/admin/service-requests/ID_LINKED', 'PUT', {status: 'approved'}) // → 409 alb_ep_invalid_transition (no se reabre un estado final)
+call('/admin/audit?per_page=999')                       // → 200 con máx. 100 filas
+```
+
+**Bloque 4 — nonce inválido (cualquier sesión):**
+
+```js
+fetch('/wp-json/alb-employee-portal/v1/me', {credentials:'same-origin',
+  headers: {'X-WP-Nonce': 'nonce-falso'}}).then(r => console.log(r.status)) // → 403
+```
+
+## Apéndice B — Nivel 1 (API Elite) pre-documentado para la fase de análisis
+
+Investigado en la documentación pública de Amelia por si el inspector confirma licencia Elite (fuentes: [API Customers](https://wpamelia.com/documentation/api-customers/), [API Employees](https://w
