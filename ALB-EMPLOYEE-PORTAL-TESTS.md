@@ -13,8 +13,9 @@
 1. Descargar **`dist/alb-amelia-inspector.zip`** desde GitHub.
 2. wp-admin → Plugins → Añadir nuevo → Subir plugin → ese ZIP → Instalar → **Activar**.
 3. Ir a **Herramientas → ALB Inspector**, clic dentro del cuadro de texto (se autoselecciona) → copiar TODO.
+   - **Si el cuadro sale vacío:** usar el enlace "abrir el informe en texto plano" de esa misma página, o ir directo a `/wp-admin/tools.php?page=alb-inspector&alb_raw=1`, o abrir el archivo `uploads/alb-inspector-report.txt` cuya ruta aparece al final del informe. (El inspector v1.1.0 aísla cada sección: aunque una falle, el informe se genera igual.)
 4. **Pegar el informe completo a Claude** en este chat. Con eso se responden todos los ítems de la sección 0 de abajo y se implementan las escrituras (paso 4 del plan).
-5. Desactivar y borrar el inspector.
+5. Desactivar y borrar el inspector (y borrar `uploads/alb-inspector-report.txt` si se generó).
 6. Cuando Claude entregue la rc con escrituras: instalar **`dist/alb-employee-portal-1.0.0-rc.X.zip`** (el más reciente) igual que en el paso 2, crear la página privada de pruebas con `[alb_employee_portal]`, y seguir el checklist desde la sección 1.
 
 ## 0. Verificación del entorno real (orden acordado, pasos 1–2)
