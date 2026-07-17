@@ -20,6 +20,9 @@ define( 'ALBM_DIR', plugin_dir_path( __FILE__ ) );
 define( 'ALBM_REST_NAMESPACE', 'albm/v1' );
 
 require_once ALBM_DIR . 'includes/class-schema.php';
+require_once ALBM_DIR . 'includes/class-identity.php';
+require_once ALBM_DIR . 'includes/class-authorization.php';
+require_once ALBM_DIR . 'includes/class-rest-kernel.php';
 require_once ALBM_DIR . 'includes/class-plugin.php';
 
 register_activation_hook( __FILE__, array( 'ALBM\\Plugin', 'activate' ) );

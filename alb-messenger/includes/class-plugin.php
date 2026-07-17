@@ -20,9 +20,22 @@ final class Plugin {
 		return self::$instance;
 	}
 
+	/** @var Identity */
+	public $identity;
+
+	/** @var Authorization */
+	public $authorization;
+
+	/** @var Rest_Kernel */
+	public $rest;
+
 	private function __construct() {
 		load_plugin_textdomain( 'alb-messenger', false, dirname( plugin_basename( ALBM_FILE ) ) . '/languages' );
 		Schema::migrate();
+
+		$this->identity      = new Identity();
+		$this->authorization = new Authorization();
+		$this->rest          = new Rest_Kernel( $this->identity );
 	}
 
 	public static function activate() {
