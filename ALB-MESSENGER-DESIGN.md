@@ -14,8 +14,7 @@
 
 ### 1.1. Cambios respecto a v1.0 (las observaciones 1, 2, 5, 6 y 7)
 
-1. **Eventos de conversación en vez de `appointment_id` en cada mensaje (obs. 1).** Nueva entidad `albm_events`: la línea de tiempo del hilo ya no es solo mensajes — es mensajes **+ eventos** (cita vinculada, cancelación, reprogramación, cambio de empleado, archivado, reapertura, y los futuros: pago recibido, cita finalizada…). Los mensajes referencian `event_id` (nullable): un mensaje enviado en la ventana de una cita apunta al **evento** de esa cita — la trazabilidad por cita se conserva, pero sin acoplar el mensaje a la cita. Añadir un tipo de evento nuevo mañana = una fila con otro `type`, cero columnas nuevas. Es event sourcing ligero: los eventos son hechos inmutables con `payload` JSON.
-   - Consecuencia de diseño: **desaparecen los "mensajes de sistema"** — lo que antes era un mensaje `system` ("📅 Nueva cita…") ahora es un evento que el frontend renderiza en la línea de tiempo. Una sola fuente de verdad para los hechos.
+1. **Trazabilidad directa + eventos independientes (ajuste final de Ivanhoe, 2026-07-17).** Los mensajes **conservan `appointment_id`** (nullable → `albm_appointments`): un mensaje enviado en la ventana de una cita queda asociado directamente a esa cita — trazabilidad sin indirección. En paralelo, `albm_events` (ConversationEvent) existe como **registro independiente de eventos del sistema** (cancelaciones, reprogramaciones, cambio de empleado, lock/unlock, archivado, reapertura, futuros: pago recibido, cita finalizada…): una fila con `type` + `payload` JSON por hecho. **Esto NO es event sourcing**: los eventos son un registro informativo que el frontend intercala en la línea de tiempo; nunca son la fuente de la que se reconstruye el estado, y los mensajes no dependen de ellos.
 2. **Adjuntos reservados (obs. 2)** `[diseñado, NO implementar]`: tabla satélite futura `albm_attachments (id, message_id, kind, storage_ref, meta JSON)`. `albm_messages` **no cambiará** cuando llegue: un mensaje con adjuntos es un mensaje normal con filas satélite. El `payload` JSON del mensaje queda para datos ligeros inline; lo pesado vive en el satélite.
 3. **Audit Log ≠ System Events (obs. 5).** Dos tablas, dos responsabilidades: `albm_events` = hechos del dominio (reservas, estados, participantes). `albm_audit_log` = acciones del administrador (abrió, respondió, archivó, bloqueó, exportó). Nunca se mezclan.
 4. **Estado `locked` (obs. 6)** `[1.0]`: disputa/fraude/investigación/requerimiento legal. Nadie escribe salvo el admin; los participantes conservan lectura. Solo el admin entra y sale de `locked`, siempre auditado.
@@ -49,20 +48,20 @@ albm_events                            ← System Events (obs. 1 y 5)
   created_at
   INDEX (conversation_id, id) · INDEX (type, ext_ref)
 
-albm_appointments                      ← proyección de citas para el motor de ventanas
-  id · conversation_id · event_id → events (su evento appointment_linked)
+albm_appointments                      ← citas vinculadas al hilo + motor de ventanas
+  id · conversation_id
   ext_appointment_id UNIQUE · service_name (instantánea)
   starts_at · ends_at · status · writable_until (= ends_at + 48h)
   INDEX (conversation_id, writable_until)
 
 albm_messages
   id · conversation_id → conversations
-  event_id bigint NULL → events        ← contexto de cita/hecho (trazabilidad, obs. 1)
+  appointment_id bigint NULL → appointments   ← trazabilidad DIRECTA por cita (ajuste final)
   sender_wp_id · sender_role: customer | employee | admin   (instantánea; admin = "Soporte")
   type varchar(16) 'text'              (futuros: image, file, voice, location)
   body longtext · payload longtext NULL
   created_at · deleted_at NULL         (borrado suave; retención: jamás se borra)
-  INDEX (conversation_id, id) · INDEX (event_id)
+  INDEX (conversation_id, id) · INDEX (appointment_id)
 
 albm_reads                 PK (conversation_id, wp_user_id) · last_read_message_id · updated_at
 albm_notification_state    PK (conversation_id, wp_user_id) · pending_since NULL · last_email_at NULL
@@ -79,10 +78,10 @@ albm_employee_map          id · wp_user_id UNIQUE · provider · ext_employee_i
 ```mermaid
 erDiagram
     albm_conversations ||--o{ albm_participants : "miembros (2 en v1, N en el futuro)"
-    albm_conversations ||--o{ albm_events : "hechos del dominio"
+    albm_conversations ||--o{ albm_events : "eventos del sistema (registro)"
     albm_conversations ||--o{ albm_messages : "mensajes"
-    albm_events        |o--o{ albm_messages : "contexto (event_id, opcional)"
-    albm_events        ||--o| albm_appointments : "proyección de cita"
+    albm_conversations ||--o{ albm_appointments : "citas vinculadas"
+    albm_appointments  |o--o{ albm_messages : "contexto (appointment_id, opcional)"
     albm_conversations ||--o{ albm_reads : "puntero por persona"
     albm_conversations ||--o{ albm_notification_state : "estado email por persona"
     albm_conversations ||--o{ albm_audit_log : "acciones del admin"
@@ -102,7 +101,7 @@ erDiagram
 ```
 
 - `LOCKED`: nadie escribe salvo admin; participantes solo leen. Entrada/salida exclusiva del admin, auditada y con evento de dominio (las dos responsabilidades de la obs. 5: el *hecho* va a events, la *acción del admin* a audit_log).
-- Regla de escritura efectiva (servidor, en cada POST): `status=active ∧ participante ∧ (∃ cita con writable_until > ahora ∨ override_until > ahora)` — o admin (siempre, como Soporte, auditado), salvo que ni admin… no: admin escribe incluso en locked (es su herramienta de gestión de la disputa).
+- Regla de escritura efectiva (servidor, en cada POST): `status=active ∧ participante ∧ (∃ cita con writable_until > ahora ∨ override_until > ahora)`. El admin escribe siempre — incluso en `locked`, que es precisamente su herramienta para gestionar la disputa — como Soporte y auditado.
 
 ---
 
@@ -160,9 +159,9 @@ Las **dos abstracciones** que pediste, separadas: `Transport` = *cómo llegan lo
 
 ## 3. Flujos (sin cambios de fondo; actualizados a events y albm/v1)
 
-**Provisionamiento:** hook de Amelia → adaptador resuelve par y usuario WP del cliente → find-or-create conversación por `pair_key` + 2 filas en participants → **evento** `appointment_linked` (payload: servicio, fechas) + proyección en albm_appointments → estado ACTIVE. Cancelación/reprogramación/cambio de empleado: mismo camino, evento correspondiente, ventanas recalculadas. Cliente histórico sin usuario WP → pendiente visible en el panel admin.
+**Provisionamiento:** hook de Amelia → adaptador resuelve par y usuario WP del cliente → find-or-create conversación por `pair_key` + 2 filas en participants → **evento** `appointment_linked` (payload: servicio, fechas) + fila en albm_appointments (independiente del evento) → estado ACTIVE. Cancelación/reprogramación/cambio de empleado: mismo camino, evento correspondiente, ventanas recalculadas. Cliente histórico sin usuario WP → pendiente visible en el panel admin.
 
-**Mensaje cliente→empleado:** POST → sesión→participante→estado/ventana → sanear → insertar mensaje con `event_id` de la cita en ventana (si la hay) → `pending_since` del destinatario si era NULL → 201. El destinatario lo ve por polling (2–10 s); al leer, avanza su puntero y limpia `pending_since`. Cron cada 5 min aplica la regla de email (≥15 min sin leer ∧ ≥6 h desde el último email de ese hilo → 1 email).
+**Mensaje cliente→empleado:** POST → sesión→participante→estado/ventana → sanear → insertar mensaje con `appointment_id` de la cita en ventana (si la hay) → `pending_since` del destinatario si era NULL → 201. El destinatario lo ve por polling (2–10 s); al leer, avanza su puntero y limpia `pending_since`. Cron cada 5 min aplica la regla de email (≥15 min sin leer ∧ ≥6 h desde el último email de ese hilo → 1 email).
 
 **Supervisión:** el admin lee cualquier hilo (audit `read`), escribe siempre como Soporte (`sender_role=admin`, audit `write`), bloquea/desbloquea/reabre/archiva (audit + evento de dominio). El rol sale de la sesión; suplantar es estructuralmente imposible.
 
@@ -215,7 +214,7 @@ Disciplina acordada: **cada módulo completamente funcional y probado antes del 
 |---|---|---|---|
 | M0 | Esqueleto + esquema | Bootstrap del plugin, migraciones versionadas, las 9 tablas, i18n, desinstalación conservadora | Harness: activación crea las 9 tablas; segunda activación idempotente y sin consultas extra |
 | M1 | Identidad y permisos | Resolución de roles en servidor, mapeo de empleados, middleware REST `albm/v1` | Matriz de permisos ejecutada contra stubs: cada celda ✅/❌ verificada |
-| M2 | Conversaciones + eventos + adaptador Amelia | pair_key, participants, events, proyección de citas, motor de ventanas/estados, hooks + reconciliación | Simulación de ciclo de reserva completo (alta→reprogramación→cancelación) con estados correctos |
+| M2 | Conversaciones + eventos + adaptador Amelia | pair_key, participants, events, citas vinculadas, motor de ventanas/estados, hooks + reconciliación | Simulación de ciclo de reserva completo (alta→reprogramación→cancelación) con estados correctos |
 | M3 | Mensajes + lecturas | POST/timeline fusionada, punteros, reglas de ventana/locked, saneamiento, rate-limit | Envíos válidos/inválidos, 409/423, XSS almacenado inerte |
 | M4 | Polling | Endpoint /poll con cursor + interval_hint | Carga: N usuarios simulados, 1 consulta por poll verificada |
 | M5 | Notificaciones | Notification Provider + canales in-app y email (regla 15min/6h) | Simulación temporal: 10:00 mensaje → 10:15 email → silencio 6h |

@@ -91,7 +91,6 @@ class Schema {
 		dbDelta( 'CREATE TABLE ' . self::table( 'appointments' ) . " (
 			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
 			conversation_id bigint(20) unsigned NOT NULL,
-			event_id bigint(20) unsigned NOT NULL,
 			ext_appointment_id varchar(64) NOT NULL,
 			service_name varchar(255) NOT NULL DEFAULT '',
 			starts_at datetime NOT NULL,
@@ -106,7 +105,7 @@ class Schema {
 		dbDelta( 'CREATE TABLE ' . self::table( 'messages' ) . " (
 			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
 			conversation_id bigint(20) unsigned NOT NULL,
-			event_id bigint(20) unsigned DEFAULT NULL,
+			appointment_id bigint(20) unsigned DEFAULT NULL,
 			sender_wp_id bigint(20) unsigned NOT NULL,
 			sender_role varchar(16) NOT NULL,
 			type varchar(16) NOT NULL DEFAULT 'text',
@@ -116,7 +115,7 @@ class Schema {
 			deleted_at datetime DEFAULT NULL,
 			PRIMARY KEY  (id),
 			KEY conv_id (conversation_id,id),
-			KEY event (event_id)
+			KEY appointment (appointment_id)
 		) {$charset};" );
 
 		dbDelta( 'CREATE TABLE ' . self::table( 'reads' ) . " (
