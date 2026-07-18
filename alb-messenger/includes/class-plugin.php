@@ -29,6 +29,18 @@ final class Plugin {
 	/** @var Rest_Kernel */
 	public $rest;
 
+	/** @var Amelia_Reader */
+	public $reader;
+
+	/** @var Conversation_Repository */
+	public $conversations;
+
+	/** @var Appointment_Sync */
+	public $sync;
+
+	/** @var Amelia_Adapter */
+	public $adapter;
+
 	private function __construct() {
 		load_plugin_textdomain( 'alb-messenger', false, dirname( plugin_basename( ALBM_FILE ) ) . '/languages' );
 		Schema::migrate();
@@ -36,6 +48,11 @@ final class Plugin {
 		$this->identity      = new Identity();
 		$this->authorization = new Authorization();
 		$this->rest          = new Rest_Kernel( $this->identity );
+
+		$this->reader        = new Amelia_Reader();
+		$this->conversations = new Conversation_Repository();
+		$this->sync          = new Appointment_Sync( $this->reader, $this->conversations );
+		$this->adapter       = new Amelia_Adapter( $this->sync, $this->reader );
 	}
 
 	public static function activate() {

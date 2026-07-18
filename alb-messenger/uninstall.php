@@ -9,3 +9,7 @@
  */
 
 defined( 'WP_UNINSTALL_PLUGIN' ) || exit;
+
+// Desprogramar los crons de reconciliación (M2): no dejar eventos huérfanos.
+wp_clear_scheduled_hook( 'albm_reconcile_incremental' );
+wp_clear_scheduled_hook( 'albm_reconcile_daily' );

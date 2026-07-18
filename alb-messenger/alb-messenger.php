@@ -23,6 +23,10 @@ require_once ALBM_DIR . 'includes/class-schema.php';
 require_once ALBM_DIR . 'includes/class-identity.php';
 require_once ALBM_DIR . 'includes/class-authorization.php';
 require_once ALBM_DIR . 'includes/class-rest-kernel.php';
+require_once ALBM_DIR . 'includes/class-amelia-reader.php';
+require_once ALBM_DIR . 'includes/class-conversation-repository.php';
+require_once ALBM_DIR . 'includes/class-appointment-sync.php';
+require_once ALBM_DIR . 'includes/class-amelia-adapter.php';
 require_once ALBM_DIR . 'includes/class-plugin.php';
 
 register_activation_hook( __FILE__, array( 'ALBM\\Plugin', 'activate' ) );
